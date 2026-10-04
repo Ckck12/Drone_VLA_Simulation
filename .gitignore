@@ -11,8 +11,10 @@ __pycache__/
 third_party/
 
 # --- measurement output -------------------------------------------------------------
-# Small Phase 0 artifacts (plots, step-response CSVs) ARE committed: they are the
-# evidence behind docs/phase0_env.md. Bulk recordings are not.
+# Small Phase 0 artifacts (plots, step-response CSVs, the contact sheet) ARE committed:
+# they are the evidence behind docs/phase0_env.md. Bulk recordings are not -- the
+# profiler regenerates them with one command.
 results/gui_run/
+results/env_profile*/
 results/**/frames/
 *.npy

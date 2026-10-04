@@ -1,0 +1,21 @@
+{
+    "captured_local": "2026-10-04T22:19:36.4516650+09:00",
+    "os_caption": "Microsoft Windows 11 Home",
+    "os_version": "10.0.26200",
+    "power_scheme_name": "SAMSUNG MODE",
+    "power_scheme_guid": "ab6534a3-bc02-4c44-94d1-a8535b2eb070",
+    "on_ac_power": true,
+    "battery": {
+        "present": true,
+        "battery_status_code": 2,
+        "battery_status": "on AC",
+        "estimated_charge_percent": 100
+    },
+    "cpu_name": "13th Gen Intel(R) Core(TM) i5-1340P",
+    "cpu_load_percent_instant": 23,
+    "host_ram_total_mb": 15944,
+    "host_ram_free_mb": 432,
+    "process_count": 387,
+    "note": "cpu_load_percent_instant is a single WMI sample, not an average. CPU temperature is not exposed by this hardware through WMI.",
+    "process_list": "removed before publishing"
+}

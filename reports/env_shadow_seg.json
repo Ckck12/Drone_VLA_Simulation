@@ -1,0 +1,337 @@
+{
+  "schema": "dronevla.profile_env/1",
+  "label": "shadow=1 + segmentation on, the BaseAviary defaults, 100 frames",
+  "captured_utc": "2026-10-04T13:20:47Z",
+  "roadmap": "v3 Phase 0 item 6; exit gate '1000 RGB frames, no NaN, no time reversal'",
+  "config": {
+    "frames": 100,
+    "frames_per_episode": 100,
+    "episodes": 1,
+    "warmup_frames": 50,
+    "pyb_hz": 240,
+    "ctrl_hz": 60,
+    "record_hz": 5.0,
+    "lap_period_s": 20.0,
+    "physics_steps_per_recorded_frame": 48,
+    "control_updates_per_recorded_frame": 12,
+    "physics_model": "Physics.PYB",
+    "drone_model": "CF2X",
+    "controller": "DSLPIDControl",
+    "connection_mode": "DIRECT",
+    "png_compress_level": 6,
+    "seed": 0
+  },
+  "camera": {
+    "width": 128,
+    "height": 96,
+    "channels": 3,
+    "dtype": "uint8",
+    "renderer": "tiny",
+    "fov_vertical_deg": 60.0,
+    "fov_horizontal_deg": 75.178,
+    "aspect": 1.3333333333333333,
+    "near_m": 0.0397,
+    "far_m": 1000.0,
+    "intrinsics_px": {
+      "fx": 83.1384,
+      "fy": 83.1384,
+      "cx": 64.0,
+      "cy": 48.0,
+      "note": "square pixels; derived from the vertical FOV and aspect=w/h"
+    },
+    "extrinsics": {
+      "eye": "drone position + [0, 0, offset_world_z] in world frame",
+      "offset_world_z_m": 0.0397,
+      "look_direction": "body +x (forward)",
+      "up_vector": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "note": "up is world +z, copied from BaseAviary._getDroneImages, so the image does not roll with the airframe"
+    },
+    "shadow": true,
+    "segmentation": true,
+    "deviations_from_baseaviary": [
+      "resolution 128x96 instead of the hardcoded 64x48",
+      "aspect = w/h instead of 1.0 (BaseAviary stretches pixels)",
+      "renderer passed explicitly instead of left to the PyBullet default",
+      "segmentation off by default (not a policy input)",
+      "shadow off by default"
+    ]
+  },
+  "timing": {
+    "buckets": {
+      "reset": {
+        "n": 1,
+        "total_s": 0.04790536800010159,
+        "mean_ms": 47.90536800010159,
+        "p50_ms": 47.90536800010159,
+        "p95_ms": 47.90536800010159,
+        "p99_ms": 47.90536800010159,
+        "min_ms": 47.90536800010159,
+        "max_ms": 47.90536800010159
+      },
+      "control": {
+        "n": 100,
+        "total_s": 0.9756675059888948,
+        "mean_ms": 9.756675059888948,
+        "p50_ms": 9.625550498185476,
+        "p95_ms": 10.71357934988555,
+        "p99_ms": 12.118725739937874,
+        "min_ms": 9.003498998936266,
+        "max_ms": 12.214630999551446
+      },
+      "physics": {
+        "n": 100,
+        "total_s": 0.35283997801070655,
+        "mean_ms": 3.5283997801070655,
+        "p50_ms": 3.466923998985294,
+        "p95_ms": 3.983566249326031,
+        "p99_ms": 4.237371271046868,
+        "min_ms": 3.17156299661292,
+        "max_ms": 4.36372200238111
+      },
+      "render": {
+        "n": 100,
+        "total_s": 2.655230984996706,
+        "mean_ms": 26.55230984996706,
+        "p50_ms": 26.517516500007332,
+        "p95_ms": 27.200309599356842,
+        "p99_ms": 27.708566700039228,
+        "min_ms": 25.773315000151342,
+        "max_ms": 27.849512999637227
+      },
+      "encode": {
+        "n": 100,
+        "total_s": 0.19679218399232923,
+        "mean_ms": 1.9679218399232925,
+        "p50_ms": 1.9795470002463844,
+        "p95_ms": 2.1730591006871687,
+        "p99_ms": 2.351966280075431,
+        "min_ms": 1.5723770002296078,
+        "max_ms": 2.430402000754839
+      },
+      "write": {
+        "n": 100,
+        "total_s": 0.03511331500249071,
+        "mean_ms": 0.3511331500249071,
+        "p50_ms": 0.3430570000091393,
+        "p95_ms": 0.41332475043418526,
+        "p99_ms": 0.45773677954457576,
+        "min_ms": 0.28939300045749405,
+        "max_ms": 0.5510719993253588
+      }
+    },
+    "per_episode": [
+      {
+        "episode": 0,
+        "frames": 100,
+        "reset_s": 0.04790536800010159,
+        "plan": {
+          "radius_m": 1.2547846749285816,
+          "altitude_m": 0.45395734275277405,
+          "phase0_rad": 0.25744424357926954,
+          "lap_period_s": 20.0,
+          "tangential_speed_ms": 0.3942022316592689
+        },
+        "scene": {
+          "red_cube_id": 2,
+          "red_xyz": [
+            -0.24173618223573545,
+            0.6566351196001362,
+            0.15
+          ],
+          "blue_sphere_id": 3,
+          "blue_xyz": [
+            0.20637778863886086,
+            -0.44668211211641007,
+            0.15
+          ]
+        },
+        "render_p50_ms": 26.517516500007332,
+        "frame_total_p50_ms": 42.05319449920353
+      }
+    ],
+    "pipeline_wall_s": 4.289285452000513,
+    "recorded_buckets_total_s": 4.263549335991229,
+    "unaccounted_s": 0.02573611600928416,
+    "process_wall_s": 6.682979563000117,
+    "timer_overhead_ns": 143.78265499999543,
+    "note": "unaccounted_s is pipeline time outside the six buckets: the JPEG size subsample, metadata construction and loop overhead. Throughput is computed from pipeline_wall_s, so it includes that overhead."
+  },
+  "throughput": {
+    "recorded_frames_per_wall_second": 23.313906504721018,
+    "sim_seconds_recorded": 20.0,
+    "real_time_factor": 4.662781300944204,
+    "roadmap_4_4_planning_assumption": "5-20 recorded frames/wall-second"
+  },
+  "bytes_per_frame": {
+    "raw_rgb_uint8": 36864,
+    "png_on_disk": {
+      "mean": 2435.52,
+      "p50": 2463.5,
+      "min": 1933.0,
+      "max": 2908.0,
+      "compress_level": 6
+    },
+    "jpeg_in_memory_subsample": {
+      "90": {
+        "n": 10,
+        "mean": 4089.1,
+        "p50": 4082.5,
+        "encode_p50_ms": 0.42823600006158813,
+        "subsampling": "PIL default for this quality"
+      },
+      "75": {
+        "n": 10,
+        "mean": 2711.7,
+        "p50": 2691.5,
+        "encode_p50_ms": 0.23861350064180442,
+        "subsampling": "PIL default for this quality"
+      }
+    },
+    "note": "PNG is what was written to disk, so the recorded frames stay losslessly re-encodable. JPEG is the format assumed by roadmap v3 §4.4 and is measured in memory on a subsample; its encode time is excluded from the buckets."
+  },
+  "memory_kb": {
+    "vmrss_after_imports": 69832,
+    "vmrss_after_first_reset": 110388,
+    "vmrss_at_end": 113540,
+    "vmhwm_peak": 113544,
+    "ru_maxrss": 113184,
+    "note": "ru_maxrss is a lifetime peak that includes interpreter and import cost. Frames are streamed to disk, never accumulated in memory."
+  },
+  "provenance": {
+    "dronevla_version": "0.0.1",
+    "repo": {
+      "sha": "a22b832c63b04b9ce3ce72cf9ecf5fefe05bd279",
+      "dirty": true,
+      "remote": null
+    },
+    "gym_pybullet_drones": {
+      "sha": "7ebad1ecabd28a7000add2d05f888aa2e837c2cc",
+      "dirty": false,
+      "remote": "https://github.com/learnsyslab/gym-pybullet-drones.git"
+    },
+    "python": "3.12.3",
+    "numpy": "2.5.3",
+    "pillow": "12.3.0",
+    "pybullet_api_version": 202010061,
+    "pybullet_numpy_enabled": 1,
+    "torch_imported": false
+  },
+  "host": {
+    "uname": "Linux <host> 6.18.40.1-microsoft-standard-WSL2 #1 SMP PREEMPT_DYNAMIC Fri Jul 31 22:12:15 UTC 2026 x86_64 x86_64",
+    "cpu_count_affinity": 16,
+    "cpu_count_total": 16,
+    "loadavg_1_5_15": [
+      0.853515625,
+      0.73828125,
+      0.56103515625
+    ],
+    "thread_env": {
+      "OMP_NUM_THREADS": null,
+      "MKL_NUM_THREADS": null,
+      "OPENBLAS_NUM_THREADS": null,
+      "NUMEXPR_NUM_THREADS": null
+    },
+    "renderer_env": {
+      "GALLIUM_DRIVER": null,
+      "LIBGL_ALWAYS_SOFTWARE": null,
+      "DISPLAY": ":0",
+      "WAYLAND_DISPLAY": "wayland-0"
+    },
+    "meminfo_memtotal_kb": 7907916,
+    "meminfo_memavailable_kb": 6625524,
+    "meminfo_swaptotal_kb": 2097152,
+    "disk_free_gb": 1021.46,
+    "disk_total_gb": 1081.1,
+    "windows": {
+      "captured_local": "2026-10-04T22:19:36.4516650+09:00",
+      "os_caption": "Microsoft Windows 11 Home",
+      "os_version": "10.0.26200",
+      "power_scheme_name": "SAMSUNG MODE",
+      "power_scheme_guid": "ab6534a3-bc02-4c44-94d1-a8535b2eb070",
+      "on_ac_power": true,
+      "battery": {
+        "present": true,
+        "battery_status_code": 2,
+        "battery_status": "on AC",
+        "estimated_charge_percent": 100
+      },
+      "cpu_name": "13th Gen Intel(R) Core(TM) i5-1340P",
+      "cpu_load_percent_instant": 23,
+      "host_ram_total_mb": 15944,
+      "host_ram_free_mb": 432,
+      "process_count": 387,
+      "note": "cpu_load_percent_instant is a single WMI sample, not an average. CPU temperature is not exposed by this hardware through WMI.",
+      "process_list": "removed before publishing"
+    }
+  },
+  "checks": {
+    "frame_files_on_disk": {
+      "pass": true,
+      "found": 100,
+      "expected": 100
+    },
+    "metadata_rows": {
+      "pass": true,
+      "found": 100,
+      "expected": 100
+    },
+    "no_nan_or_inf": {
+      "pass": true,
+      "non_finite_values": 0,
+      "values_checked": 2300
+    },
+    "wall_clock_monotonic": {
+      "pass": true,
+      "backward_steps": 0
+    },
+    "sim_time_strictly_increasing_per_episode": {
+      "pass": true
+    },
+    "sim_time_interval_equals_record_period": {
+      "pass": true,
+      "expected_s": 0.2,
+      "worst_abs_deviation_s": 2.831068712794149e-15,
+      "physics_steps_per_frame": 48
+    },
+    "decoded_shape_and_dtype": {
+      "pass": true,
+      "expected": [
+        [
+          96,
+          128,
+          3
+        ],
+        "uint8"
+      ],
+      "found": [
+        [
+          [
+            96,
+            128,
+            3
+          ],
+          "uint8"
+        ]
+      ],
+      "frames_decoded": 40
+    },
+    "frames_are_not_identical": {
+      "pass": true,
+      "unique_images": 40,
+      "sampled": 40
+    },
+    "frames_are_not_blank": {
+      "pass": true,
+      "min_pixel_std": 56.89890041377017,
+      "max_pixel_std": 74.03452851934351
+    }
+  },
+  "artifacts": {
+    "frames_dir": "results/env_profile_shadowseg/frames",
+    "frames_metadata": "results/env_profile_shadowseg/frames.jsonl"
+  }
+}

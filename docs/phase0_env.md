@@ -178,8 +178,12 @@ help text says "default: 5" but `DEFAULT_DURATION_SEC` is 12, so pass it explici
 
 ### Still not done
 
-- Sustained camera throughput measurement (only a single cold frame at 13.0 ms so far).
-- Ripple frequency over a longer hold.
+*(Superseded later the same day — see "Still open" at the end of this file.)*
+
+- ~~Sustained camera throughput measurement (only a single cold frame at 13.0 ms so far).~~
+  Done: 1000 frames, 34.48 recorded frames/wall-second. The single cold frame at 13.0 ms
+  turned out to be representative — the sustained render p50 is 12.84 ms.
+- Ripple frequency over a longer hold. Still open.
 
 ---
 
@@ -246,3 +250,201 @@ accepted: `git clone` alone does not fetch the simulator.
 **Caveat on `robotics_project/`.** These Markdown files are *copies* of the authoritative
 originals in the Windows OneDrive workspace. Tracking them makes divergence visible in `git diff`
 instead of invisible, but edits made on the OneDrive side will not appear here automatically.
+n---n
+## Roadmap v3 Phase 0 item 6 — the 1000-frame profile (2026-10-04)
+
+```
+python -m dronevla.profile_env --frames 1000 --renderer tiny --out reports/env.json
+```
+
+Code: `dronevla/profile_env.py`, `dronevla/camera.py`. Reports: `reports/env.json` (run A),
+`reports/env_runB.json` (repeat), `reports/env_shadow_seg.json` (comparison).
+`scripts/summarize_env_profile.py` prints every number quoted below straight from those
+files, so the doc cannot drift from the JSON.
+
+### What was measured, and under what rules
+
+Protocol from §7.4: 50 warm-up frames discarded before timing; percentiles not just means;
+the whole run repeated in a second process for spread; `perf_counter` overhead measured
+(145-147 ns/call, so the sub-millisecond buckets are still ~2000x the timer cost); host
+conditions recorded. Rates from §4.3: physics 240 Hz, control 60 Hz, record 5 Hz, which is
+**48 physics steps and 12 control updates per recorded frame, exactly**.
+
+The earlier hover and velocity-step scripts used a 48 Hz controller. 48 Hz cannot hold this
+contract — 240/5 = 48 physics steps per frame is not a whole number of 240/48 = 5-step
+control periods. 60 Hz divides both. The controller rate changed for that reason, not by
+preference.
+
+Ten episodes of 100 frames = 20 sim-seconds each, matching §4.4's episode-length
+assumption, so `reset` is sampled ten times rather than once.
+
+### Where the wall time goes
+
+p50 per recorded frame, run A and the repeat run B:
+
+| bucket | A p50 | B p50 | share of wall (A) | run-to-run spread |
+|---|---:|---:|---:|---:|
+| reset (per episode, incl. rebuilding the scene) | 48.31 ms | 47.57 ms | 1.7 % | 1.6 % |
+| control — 12x `DSLPIDControl` | 9.50 ms | 9.54 ms | 33.9 % | 0.4 % |
+| physics — 48 PyBullet steps | 3.53 ms | 3.46 ms | 12.5 % | 1.9 % |
+| render — one 128x96 TinyRenderer frame | 12.84 ms | 12.77 ms | 44.6 % | 0.6 % |
+| encode — PNG, compress level 6 | 1.49 ms | 1.48 ms | 5.2 % | 0.4 % |
+| write — one file to ext4 | 0.37 ms | 0.27 ms | 1.3 % | 36.2 % |
+
+```
+run A : 34.48 recorded frames/wall-second, real-time factor 6.90x, pipeline 29.00 s
+run B : 35.05 recorded frames/wall-second, real-time factor 7.01x, pipeline 28.53 s
+run-to-run throughput spread : 1.65 %
+per-episode frame p50 (n=10)  : 27.38 - 28.82 ms;  reset 47.2 - 52.5 ms
+```
+
+**Finding — the PID controller costs 2.7x the physics it drives.** 12 calls to
+`computeControlFromState` take 9.50 ms while the 48 physics steps they schedule take
+3.53 ms. Control is the second-largest bucket in the whole pipeline. This is a pure-Python
+NumPy controller called 60 times per sim-second; the figure is a fact about this
+implementation, not about PID control. It matters because §4.3 keeps attitude
+stabilisation on this controller while the policy runs at 5 Hz, so the controller is a
+fixed per-frame cost under every policy, learned or scripted.
+
+**Finding — `write` is the only bucket that is not repeatable.** 36 % spread between runs
+against under 2 % everywhere else, which is what filesystem buffering looks like. It is
+1.3 % of the pipeline, so it changes nothing here, but a bytes/frame or storage claim
+should not be built on a single write measurement.
+
+### Why this camera and not `BaseAviary._getDroneImages`
+
+`_getDroneImages` hardcodes 64x48, never passes `renderer=`, and defaults to shadows on
+plus `ER_SEGMENTATION_MASK_OBJECT_AND_LINKINDEX`. Running this profile with those two
+options turned on (`--shadow --segmentation`, `reports/env_shadow_seg.json`):
+
+```
+render p50   12.84 ms  ->  26.52 ms     (2.07x)
+throughput   34.48     ->  23.31 recorded frames/wall-second
+png/frame    1421 B    ->  2436 B
+```
+
+So the library's defaults would cost **twice the render time** for a segmentation mask that
+§4.3 explicitly excludes from policy input and a shadow nothing needs yet. It also renders
+at `aspect=1.0` into a 4:3 image, which stretches the pixels. `dronevla/camera.py` keeps
+the view transform identical and lists every deviation in `camera.describe()`, which lands
+in the report.
+
+### bytes/frame — §4.4's compression assumption is inverted
+
+| format | bytes/frame | vs raw | vs PNG |
+|---|---:|---:|---:|
+| raw uint8 RGB 128x96x3 | 36 864 | 1.0x | |
+| **PNG, compress level 6 (what was written)** | **1 421** (p50 1 411, range 1 022-1 847) | 25.9x smaller | 1.00x |
+| JPEG q90 (in memory) | 3 922 | 9.4x smaller | 2.76x larger |
+| JPEG q75 (in memory) | 2 651 | 13.9x smaller | 1.87x larger |
+
+§4.4 assumes "JPEG 평균 6-15 KB/frame". Measured, **JPEG is 2.7x *larger* than lossless
+PNG**, and PNG is 4-10x smaller than the low end of that assumption. At 128x96 the image is
+flat colour over large areas, which PNG's filtering plus DEFLATE handles far better than a
+DCT, and JPEG's fixed overhead is not amortised over so few pixels. Lossy was the wrong
+default here, both for size and for fidelity.
+
+Recomputing §4.4 with the measured PNG size and run A's throughput, keeping the roadmap's
+own 1.5x overhead factor:
+
+| stage | frames | §4.4 raw-GB figure | measured PNG | §4.4 time estimate | measured |
+|---|---:|---:|---:|---:|---:|
+| v0.1 thin slice | 8 000 | 0.295 GB | **0.011 GB** | 10-40 min | **5.8 min** |
+| v0.2 total | 200 000 | 7.373 GB | **0.284 GB** | 4.2-16.7 h | **2.42 h** |
+
+**These replace planning assumptions, not the measurement.** Two caveats, both material:
+the scene is a ground plane plus two untextured primitives, and richer scenes compress
+worse and render slower; and the 1.5x factor still covers planning, rejection and QA, which
+were not measured. The disk budget in §4.4 (20 GB for dataset and staging) is far larger
+than it needs to be at these sizes.
+
+### What is actually in a frame
+
+`scripts/inspect_frame_contents.py` renders one pose with the segmentation mask on and
+counts pixels per body, because guessing from a thumbnail is not evidence:
+
+```
+pose xyz=[1.213, 0.319, 0.454]  yaw=-165.3 deg,  128x96 = 12288 px
+
+  50.00 %  background / sky (nothing hit)
+  40.82 %  ground plane
+   4.87 %  red cube target
+   3.10 %  blue sphere target
+   1.21 %  the drone's own airframe
+```
+
+Three things follow. **Half of every frame is empty sky**, because the camera looks
+horizontally so the horizon sits exactly on the image centre line. **The two targets --
+the entire content the policy has to tell apart -- occupy under 8 % of the pixels.** And
+the drone sees **its own airframe** in 1.2 % of the frame, a fixed artifact in the bottom
+of every observation. None of this is a Phase 0 blocker, but all three are inputs to the
+§4.1 scene generator and to any later decision about camera pitch or FOV.
+
+**Trouble-shooting note — this was caught by looking, not by a check.** The first 1000-frame
+recording passed every automated check: 1000 files, right shape and dtype, no NaN, no
+repeated images, non-blank. The contact sheet
+(`results/phase0/env_profile_contact_sheet.png`, built by `scripts/contact_sheet.py`)
+showed the targets clipped by the bottom edge in most frames. Cause: the drone flew at
+0.9-1.1 m while the targets sit at z = 0.15 m about 1.2 m away, so the depression angle to
+a target was `atan(0.85/1.2) = 35 deg` against a half-FOV of 30 deg. Flying at 0.40-0.60 m
+fixed it and the run was repeated. The checks cannot catch this: a frame of sky and ground
+is non-blank and unique.
+
+### Memory
+
+```
+VmRSS after imports        68.3 MB
+VmRSS after the first reset 108.2 MB
+VmRSS at the end           113.2 MB
+VmHWM (peak)               113.2 MB      ru_maxrss 112.7 MB
+WSL MemTotal 7.5 GiB, MemAvailable 6.3 GiB at the time of the run
+```
+
+Frames are streamed to disk, never accumulated, so RSS is flat after the first reset. Peak
+is 1.5 % of what WSL has — the §4.4 worry about approaching the WSL memory ceiling does not
+apply at this stage. `torch` is never imported by the profiler, which the report records.
+
+### Conditions, and what they mean for these numbers
+
+AC power, battery at 100 %, Windows power scheme `SAMSUNG MODE`, 16 logical CPUs visible to
+WSL, load average 0.73. **The desktop was busy**: the editor and browser were running, the
+host reported 23 % instant CPU load and only 432 MB free RAM. Every figure above is
+therefore a **lower bound on throughput and an upper bound on per-frame time**. That is the
+conservative direction for planning — the measured 34.5 frames/wall-second already beats
+§4.4's 5-20 assumption by 1.7-6.9x with a loaded machine. A quiet-machine repeat would
+refine it, not rescue it. Full host record in `reports/host_state.json`, collected by
+`scripts/host_state.ps1` (WSL cannot see AC state or the host power scheme).
+
+CPU temperature is not exposed by this hardware through WMI, so thermal behaviour over a
+long generation run is unrecorded. §7.4's thread sweep (1/2/4/8) is not part of Phase 0.
+
+### Phase 0 exit criteria
+
+| §5 Phase 0 exit criterion | status |
+|---|---|
+| 1000 real RGB frames recorded | met — `frame_files_on_disk` 1000/1000, decoded off disk |
+| no NaN, no state-time reversal | met — 23 000 values checked finite; sim time strictly increasing per episode, interval 0.2 s to 2.8e-15 s; wall clock monotonic |
+| renderer name and peak RSS/FPS recorded with no blanks | met — TinyRenderer, VmHWM 113.2 MB, 34.48 frames/wall-second |
+| runnable headless with one command | met — the command at the top of this section, `DIRECT` mode, no display |
+| clone outside OneDrive | met — `~/dronevla` on the WSL ext4 home |
+
+All nine automated checks pass in both runs. The checks are run against the artefacts read
+back off disk, not against the loop that wrote them.
+
+### Minimal CI
+
+`.github/workflows/ci.yml` runs `scripts/ci_smoke.sh` on push: the same camera, rates,
+encoder and verification as the full profile, at 10 frames. It completes locally in 0.72 s
+and the gate re-reads the report rather than trusting the exit code. The workflow skips
+torch entirely, since the profiler never imports it.
+
+**It has never executed.** There is no git remote yet, so the YAML is unverified beyond
+being written against the documented actions. Treat the local `bash scripts/ci_smoke.sh`
+run as the only evidence so far.
+
+### Still open
+
+- Sustained throughput is now measured, but only on a two-primitive scene and only on a
+  busy desktop.
+- Velocity-loop ripple frequency over a longer hold (from the earlier step-response work).
+- Thread sweep and a combined-load benchmark (§7.4 item 3) — Phase 4 work, not Phase 0.
