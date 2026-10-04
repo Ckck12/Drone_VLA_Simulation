@@ -14,6 +14,13 @@ and prints the instruction, the outcome and the distances for each run.
 
 LAYOUT_SEED = 0          # 장면 배치. 숫자를 바꾸면 물체의 색·모양·위치와 시작 위치가 바뀜
 
+CUSTOM_TARGETS = None    # None이면 LAYOUT_SEED가 자동 배치. 직접 놓으려면 정확히 2개를 적으세요:
+# CUSTOM_TARGETS = [
+#     dict(color="red",  shape="box",      xy=(2.0,  1.0)),   # color: red blue green yellow
+#     dict(color="blue", shape="cylinder", xy=(2.5, -1.0)),   # shape: box cylinder
+# ]                                                          # 드론은 x=-3에서 +x 방향을 보고 시작
+START_Y = None           # 시작 y 위치 [m]. None이면 LAYOUT_SEED가 정함
+
 RUN = "pair"             # "pair" : 같은 시작 상태에서 두 지시를 각각 실행 (counterfactual pair)
                          # "goal0": 첫 번째 물체로 가라는 지시만 / "goal1": 두 번째 물체만
 
@@ -52,7 +59,45 @@ sys.path.insert(0, str(REPO_ROOT))     # scripts/ is not the package root
 
 from dronevla.env import DroneTargetPairsEnv              # noqa: E402
 from dronevla.expert import StraightLineExpert            # noqa: E402
-from dronevla.task import COLORS, TaskConfig, sample_layout  # noqa: E402
+from dronevla.task import (COLORS, SHAPES, Layout, Target, TaskConfig,  # noqa: E402
+                           check_geometry, hover_point, sample_layout)
+
+
+def build_layout(cfg):
+    """LAYOUT_SEED's layout, with CUSTOM_TARGETS / START_Y applied and re-checked."""
+    base = sample_layout(LAYOUT_SEED, cfg)
+    if CUSTOM_TARGETS is None and START_Y is None:
+        return base
+    if CUSTOM_TARGETS is None:
+        targets = base.targets
+    else:
+        if len(CUSTOM_TARGETS) != 2:
+            sys.exit("CUSTOM_TARGETS needs exactly 2 targets")
+        targets = []
+        for i, t in enumerate(CUSTOM_TARGETS):
+            if t.get("color") not in COLORS or t.get("shape") not in SHAPES:
+                sys.exit(f"CUSTOM_TARGETS[{i}]: color must be one of {list(COLORS)}, "
+                         f"shape one of {list(SHAPES)}")
+            targets.append(Target(color=t["color"], shape=t["shape"],
+                                  xy=(float(t["xy"][0]), float(t["xy"][1])),
+                                  radius=cfg.target_radius_m, height=cfg.target_height_m))
+        targets = tuple(targets)
+        if targets[0].description == targets[1].description:
+            sys.exit("the two targets need different descriptions, or the instruction is ambiguous")
+    start_y = base.start_xyz[1] if START_Y is None else float(START_Y)
+    start = (cfg.start_x, start_y, cfg.altitude_m)
+    hovers = tuple(hover_point(t, start[:2], cfg) for t in targets)
+    reason = check_geometry(targets, start, hovers, cfg)
+    if reason:
+        print(f"layout rejected: {reason}")
+        print("the rules (dronevla/task.py check_geometry): both targets within "
+              f"+-{cfg.max_bearing_deg:.0f} deg of straight ahead from the start; goal regions "
+              f"at least {cfg.min_hover_separation_m} m apart; a goal region must not touch "
+              f"the other target; the straight path to one goal must pass the other target "
+              f"with {cfg.path_clearance_m} m to spare; goals 0.5 m inside the room")
+        sys.exit(1)
+    return Layout(start_xyz=start, start_yaw=cfg.start_yaw, targets=targets,
+                  hover_points=hovers, sample_seed=LAYOUT_SEED, rejected_before=0)
 
 
 def manual_policy(cfg):
@@ -86,7 +131,7 @@ def main():
         sys.exit('RUN must be "pair", "goal0" or "goal1"')
 
     cfg = dataclasses.replace(TaskConfig(), **CONFIG_OVERRIDES)
-    layout = sample_layout(LAYOUT_SEED, cfg)
+    layout = build_layout(cfg)
     out = REPO_ROOT / "results/try_env" / time.strftime("%Y%m%d_%H%M%S")
     out.mkdir(parents=True, exist_ok=True)
     env = DroneTargetPairsEnv(cfg, gui=not args.headless)
@@ -99,6 +144,16 @@ def main():
         obs, info = env.reset(seed=LAYOUT_SEED, options={
             "layout": layout, "goal_index": goal, "instruction_family": INSTRUCTION_FAMILY})
         frames, path = [obs["rgb"]], [info["privileged"]["true_pos"]]
+        if k == 0:
+            vis = env.visibility_report()
+            names = [t.description for t in layout.targets]
+            print(f"visible : at the start {names[0]} {vis['start_px'][0]} px, "
+                  f"{names[1]} {vis['start_px'][1]} px (of {128 * 96}; reject below "
+                  f"{cfg.min_first_frame_target_px}); at its own goal each fills "
+                  f"{vis['own_target_px_at_hover'][0]} / {vis['own_target_px_at_hover'][1]} px")
+            if min(vis["start_px"]) < cfg.min_first_frame_target_px:
+                print("WARNING : a target is (almost) out of the first frame -- "
+                      "a policy could not know where it is")
         t0 = time.perf_counter()
         while True:
             obs, reward, term, trunc, info = env.step(policy(obs, info))

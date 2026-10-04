@@ -19,7 +19,7 @@ beside it (§3.2 forbids a parallel production Python copy).
 | `dronevla/expert.py` | `StraightLineExpert`, the oracle expert |
 | `dronevla/sim.py` | wind, tilt cap, and the `GaussMarkov` noise process (see `realism_mapping.md`) |
 | `tests/` | 51 tests: the action contract, the env API, pair determinism, one fixture per outcome |
-| `scripts/try_env.py` | knob script: pick a layout seed, a goal or the whole pair, expert / manual / wrong |
+| `scripts/try_env.py` | knob script: a layout seed or hand-placed targets (`CUSTOM_TARGETS`, `START_Y`, re-checked by the same rejection rules), a goal or the whole pair, expert / manual / wrong. GUI mode follows the drone; **only `--headless` has been run so far** |
 
 ```
 python -m pytest tests -q            # 51 passed in 36 s
@@ -95,16 +95,29 @@ its commands stay inside the caps, so its emitted action equals the applied acti
 
 ## Measured
 
-Expert over 10 seeds x both goals (20 episodes): **20/20 success**, median episode 10.1 s
-(~50 policy steps) plus the 1 s Stop hold.
+| seeds | role | expert success | pairs | max speed in Stop hold | median episode |
+|---|---|---:|---:|---:|---:|
+| 0-9, both goals | **selection set** -- used to choose the noise model | 20/20 | 10/10 | 0.087 m/s | 10.1 s |
+| 100-119, both goals | **held out** -- not looked at while choosing | **40/40** | **20/20** | 0.083 m/s (p95 0.078) | 11.1 s |
 
-That episode length matters for §4.4, which assumed 100 frames (20 s) per episode. If the
-expert keeps needing ~10 s, the frame count is about half the §4.4 estimate. This is a
-projection from one expert on Phase 1 layouts, not a dataset measurement.
+The selection-set result is not evidence on its own, since the noise model was picked to make
+it pass; the held-out set is. The margin to the 0.1 m/s settle limit is about 0.02 m/s, so a
+noisier configuration would start producing rejected expert episodes -- which the recorder
+must log, not hide (§4.2 item 2).
+
+The episode length matters for §4.4, which assumed 100 frames (20 s) per episode. At ~11 s
+the frame count is about half the §4.4 estimate. That is a projection from one expert on
+Phase 1 layouts, not a dataset measurement.
 
 ## Next
 
 1. Dataset recorder v0.1 (§4.4-4.5): 80 episodes as 40 pairs, splits by layout, a manifest,
-   expert failures logged to a rejected manifest. Enforce `visibility_report()` at
-   generation time, and balance colours and left/right placement.
+   expert failures logged to a rejected manifest. Carry over from this step:
+   - enforce `visibility_report()` at generation time; balance colours and left/right placement
+   - stamp `time.monotonic()` per observation (the env deliberately does not)
+   - the policy step that completes the Stop is not applied as velocity -- the env switches
+     to pose hold instead. Mark it in the step record so the teacher label is not misread
+   - the expert and the test fixtures read `info["privileged"]`. A learned policy must get
+     `obs` only (§7.1: only the evaluator reads privileged state); the eval harness has to
+     enforce that interface
 2. C++ warm-up, then C1 replacing `action_adapter.py`.

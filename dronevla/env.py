@@ -81,6 +81,7 @@ class DroneTargetPairsEnv(gymnasium.Env):
         # adapter is (Phase 0 found BaseAviary ignores its bounds).
         self.action_space = spaces.Box(-hi, hi, dtype=np.float32)
 
+        self._gui = gui
         self._realtime = realtime or gui
         self._aviary = WindyCtrlAviary(
             drone_model=DroneModel.CF2X, num_drones=1,
@@ -241,6 +242,11 @@ class DroneTargetPairsEnv(gymnasium.Env):
         if not self._done and self._layout is not None and hasattr(self, "_min_d"):
             self._update_distances()
 
+        if self._gui:
+            # BaseAviary's GUI camera looks at the origin; the drone starts 3 m away from it
+            p.resetDebugVisualizerCamera(cameraDistance=2.5, cameraYaw=-50, cameraPitch=-30,
+                                         cameraTargetPosition=pos.tolist(),
+                                         physicsClientId=self._client)
         if self._realtime:
             wait = self._dt - (time.monotonic() - self._last_wall)
             if wait > 0:
