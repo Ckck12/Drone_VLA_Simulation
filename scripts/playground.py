@@ -56,6 +56,13 @@ POSITION_NOISE_Z_M = 0.01   # 수직 위치 오차 [m]. Mavic 스펙의 수평:�
 NOISE_CORRELATION_S = 1.0   # 오차가 얼마나 천천히 변하는지 [s]. 실제 추정 오차는 천천히 흘러다님
 NOISE_SEED = 0              # 같은 값이면 같은 노이즈 -> 다른 설정끼리 공정하게 비교
 
+# --- 바람·기울기 제한 ----------------------------------------------------------
+# 공기저항은 항상 켜져 있습니다(Crazyflie 실측 계수). 바람은 그 저항이 "공기 기준 속도"로 작용하게 합니다.
+WIND_SPEED_MPS = 0.0     # 평균 바람 세기 [m/s]. 0이면 바람 없음
+WIND_TOWARD_DEG = 0.0    # 바람이 불어"가는" 방향. 0 = +x 쪽으로, 90 = +y 쪽으로
+WIND_GUST_MPS = 0.0      # 돌풍 세기(표준편차) [m/s]. 평균 바람 위에 천천히 출렁이는 성분
+MAX_TILT_DEG = 35.0      # 최대 기울기 [도]. Mavic 4 Pro = 35. None이면 제한 없음
+
 # --- 기타 -------------------------------------------------------------------
 DURATION_S = 20.0      # 시뮬레이션 길이 [sim-초]
 GUI_FOLLOW = True      # GUI 시점이 드론을 따라감
@@ -76,14 +83,14 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))     # scripts/ is not the package root
 
 from dronevla.camera import MOUNTS, FrontCamera                        # noqa: E402
-from gym_pybullet_drones.control.DSLPIDControl import DSLPIDControl    # noqa: E402
-from gym_pybullet_drones.envs.CtrlAviary import CtrlAviary             # noqa: E402
+from dronevla.sim import TiltLimitedDSLPIDControl, WindyCtrlAviary      # noqa: E402
 from gym_pybullet_drones.utils.enums import DroneModel, Physics        # noqa: E402
 from gym_pybullet_drones.utils.utils import sync                       # noqa: E402
 
 PYB_HZ, CTRL_HZ = 240, 60      # §4.3 contract rates; not knobs
 TAKEOFF_S = 2.0                # hold over the first waypoint while climbing
 HOVER_SETTLE_S = 1.0           # ignore this long after the route ends before judging hover
+GUST_CORRELATION_S = 2.0       # how slowly gusts rise and fall
 START_Z = 0.1
 SKY_RGB = (255, 255, 255)      # TinyRenderer's background; the ground never renders this
 COLORS = {"red": (1, 0, 0), "blue": (0, 0, 1), "green": (0, 0.7, 0),
@@ -113,6 +120,10 @@ def check_knobs():
         problems.append("POSITION_NOISE_*_M must be >= 0")
     if NOISE_CORRELATION_S <= 0:
         problems.append("NOISE_CORRELATION_S must be > 0")
+    if WIND_SPEED_MPS < 0 or WIND_GUST_MPS < 0:
+        problems.append("WIND_SPEED_MPS and WIND_GUST_MPS must be >= 0")
+    if MAX_TILT_DEG is not None and not 0 < MAX_TILT_DEG < 90:
+        problems.append("MAX_TILT_DEG must be None or between 0 and 90")
     for i, o in enumerate(OBJECTS):
         if o.get("shape") not in ("box", "sphere", "cylinder"):
             problems.append(f"OBJECTS[{i}]: unknown shape {o.get('shape')!r}")
@@ -168,15 +179,17 @@ class Route:
         return (b - a) / n if n > 0 else np.array([1.0, 0.0])
 
 
-# ------------------------------------------------------------- estimate noise
-class PositionEstimateNoise:
-    """Error added to the position the controller is given.
+# ------------------------------------------------- slowly wandering randomness
+class GaussMarkov:
+    """A first-order Gauss-Markov process per axis, used for two things here.
 
-    A first-order Gauss-Markov process per axis: the error wanders slowly with a time
-    constant of NOISE_CORRELATION_S, and its long-run standard deviation is exactly the
-    configured sigma. White noise at 60 Hz would be the wrong model -- real position
-    estimates (GNSS, visual odometry) are wrong in a *slowly drifting* way, which is what
-    makes a real drone wander while hovering instead of buzzing in place.
+    The value wanders slowly with time constant `tau_s`, and its long-run standard
+    deviation is exactly `sigma`.
+
+    * Position-estimate error: white noise at 60 Hz would be the wrong model -- real
+      position estimates (GNSS, visual odometry) are wrong in a *slowly drifting* way, which
+      is what makes a real drone wander while hovering instead of buzzing in place.
+    * Wind gusts: gusts rise and fall over seconds, not from one control step to the next.
     """
 
     def __init__(self, sigma_xyz, tau_s, dt, seed):
@@ -256,24 +269,28 @@ def main():
 
     route = Route(WAYPOINTS, SPEED_MPS, LOOP)
     start = np.array([[*route.pts[0], START_Z]])
-    env = CtrlAviary(drone_model=DroneModel.CF2X, num_drones=1,
-                     initial_xyzs=start, initial_rpys=np.zeros((1, 3)),
-                     physics=Physics.PYB, pyb_freq=PYB_HZ, ctrl_freq=CTRL_HZ,
-                     gui=gui, record=False, obstacles=False, user_debug_gui=False)
-    ctrl = DSLPIDControl(drone_model=DroneModel.CF2X)
+    env = WindyCtrlAviary(drone_model=DroneModel.CF2X, num_drones=1,
+                          initial_xyzs=start, initial_rpys=np.zeros((1, 3)),
+                          physics=Physics.PYB_DRAG, pyb_freq=PYB_HZ, ctrl_freq=CTRL_HZ,
+                          gui=gui, record=False, obstacles=False, user_debug_gui=False)
+    ctrl = TiltLimitedDSLPIDControl(drone_model=DroneModel.CF2X, max_tilt_deg=MAX_TILT_DEG)
     obs, _ = env.reset(seed=0)
     objects = add_objects(env.CLIENT)
     if gui:
         draw_route(route, env.CLIENT)
     cam = make_camera()
-    noise = PositionEstimateNoise(
+    noise = GaussMarkov(
         (POSITION_NOISE_XY_M, POSITION_NOISE_XY_M, POSITION_NOISE_Z_M),
         NOISE_CORRELATION_S, 1.0 / CTRL_HZ, NOISE_SEED)
+    gust = GaussMarkov((WIND_GUST_MPS, WIND_GUST_MPS, 0.0), GUST_CORRELATION_S,
+                       1.0 / CTRL_HZ, NOISE_SEED + 1)
+    toward = math.radians(WIND_TOWARD_DEG)
+    wind_mean = WIND_SPEED_MPS * np.array([math.cos(toward), math.sin(toward), 0.0])
     drone = int(env.DRONE_IDS[0])
 
     steps = int(DURATION_S * CTRL_HZ)
     cam_every = CTRL_HZ // CAMERA_HZ if CAMERA_HZ else 0
-    log = {k: [] for k in ("t", "pos", "est", "vel", "rpy", "target", "moving")}
+    log = {k: [] for k in ("t", "pos", "est", "vel", "rpy", "target", "moving", "wind")}
     contacts = {i: 0 for i in range(len(objects))}
     min_dist = {i: np.inf for i in range(len(objects))}
     sky = []
@@ -289,6 +306,7 @@ def main():
         if YAW_MODE == "travel" and moving:
             yaw = float(np.arctan2(d[1], d[0]))
 
+        env.wind_world = wind_mean + gust.step()   # held for this step's 4 physics substeps
         obs, _, _, _, _ = env.step(action)
         state = obs[0]                        # the truth, from the physics engine
         believed = state.copy()               # what the controller is told
@@ -304,6 +322,7 @@ def main():
         log["rpy"].append(state[7:10].copy())
         log["target"].append(target)
         log["moving"].append(moving)
+        log["wind"].append(env.wind_world.copy())
 
         for k, (body, _, _) in enumerate(objects):
             if p.getContactPoints(bodyA=drone, bodyB=body, physicsClientId=env.CLIENT):
@@ -328,11 +347,12 @@ def main():
 
     env.close()
     report(log, objects, contacts, min_dist, route, run_dir, frames_dir if CAMERA_HZ else None,
-           sky, cam, time.time() - wall0)
+           sky, cam, ctrl, steps, time.time() - wall0)
 
 
 # -------------------------------------------------------------------- results
-def report(log, objects, contacts, min_dist, route, run_dir, frames_dir, sky, cam, wall_s):
+def report(log, objects, contacts, min_dist, route, run_dir, frames_dir, sky, cam, ctrl,
+           steps, wall_s):
     t = np.array(log["t"])
     pos, est = np.array(log["pos"]), np.array(log["est"])
     vel, rpy, tgt = np.array(log["vel"]), np.array(log["rpy"]), np.array(log["target"])
@@ -353,8 +373,23 @@ def report(log, objects, contacts, min_dist, route, run_dir, frames_dir, sky, ca
     else:
         print("speed   : the route never moved (still taking off, or one waypoint)")
     if airborne.any():
-        tilt = np.degrees(np.max(np.hypot(rpy[airborne, 0], rpy[airborne, 1])))
-        print(f"attitude: max airframe tilt {tilt:.1f} deg (Mavic 4 Pro limit: 35 deg)")
+        # true lean of the body z axis from vertical: acos(cos(roll) * cos(pitch))
+        lean = np.degrees(np.arccos(np.cos(rpy[airborne, 0]) * np.cos(rpy[airborne, 1])))
+        print(f"attitude: max airframe tilt {lean.max():.1f} deg (Mavic 4 Pro limit: 35 deg)")
+    asked = math.degrees(ctrl.requested_tilt_max_rad)
+    if MAX_TILT_DEG is None:
+        print(f"tilt cap: off -- the controller asked for up to {asked:.1f} deg")
+    else:
+        print(f"tilt cap: {MAX_TILT_DEG:.0f} deg, engaged on {100 * ctrl.limited_steps / steps:.1f}% "
+              f"of control steps; the controller asked for up to {asked:.1f} deg")
+    wind = np.array(log["wind"])
+    if WIND_SPEED_MPS or WIND_GUST_MPS:
+        w = np.linalg.norm(wind[:, :2], axis=1)
+        print(f"wind    : mean {WIND_SPEED_MPS} m/s toward {WIND_TOWARD_DEG:.0f} deg, gusts "
+              f"sigma {WIND_GUST_MPS} m/s -> felt {w.mean():.2f} m/s on average, "
+              f"{w.max():.2f} m/s peak")
+    else:
+        print("wind    : none (air drag still on)")
     print(f"route   : {route.total:.2f} m long, needs {route.total / SPEED_MPS:.1f} s at this "
           f"speed (+{TAKEOFF_S:.0f} s takeoff); DURATION_S is {DURATION_S:.0f} s")
 
@@ -438,8 +473,10 @@ def plot(t, pos, est, tgt, hspeed, err, objects, route, out):
         ax.add_patch(patch)
     ax.set_aspect("equal")
     ax.set_xlabel("x [m]"); ax.set_ylabel("y [m]")
+    wind_txt = (f"\nwind {WIND_SPEED_MPS} m/s toward {WIND_TOWARD_DEG:.0f}°, gusts {WIND_GUST_MPS} m/s"
+                if WIND_SPEED_MPS or WIND_GUST_MPS else "")
     ax.set_title(f"Top view — speed {SPEED_MPS} m/s, altitude {ALTITUDE_M} m, "
-                 f"noise xy {POSITION_NOISE_XY_M} m")
+                 f"noise xy {POSITION_NOISE_XY_M} m{wind_txt}", fontsize=10)
     ax.grid(alpha=0.3); ax.legend(loc="best", fontsize=8)
 
     ax1 = fig.add_subplot(2, 2, 2)
