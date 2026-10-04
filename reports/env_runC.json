@@ -1,0 +1,577 @@
+{
+  "schema": "dronevla.profile_env/1",
+  "label": "",
+  "captured_utc": "2026-10-04T13:55:31Z",
+  "roadmap": "v3 Phase 0 item 6; exit gate '1000 RGB frames, no NaN, no time reversal'",
+  "config": {
+    "frames": 1000,
+    "frames_per_episode": 100,
+    "episodes": 10,
+    "warmup_frames": 50,
+    "pyb_hz": 240,
+    "ctrl_hz": 60,
+    "record_hz": 5.0,
+    "lap_period_s": 20.0,
+    "physics_steps_per_recorded_frame": 48,
+    "control_updates_per_recorded_frame": 12,
+    "physics_model": "Physics.PYB",
+    "drone_model": "CF2X",
+    "controller": "DSLPIDControl",
+    "connection_mode": "DIRECT",
+    "png_compress_level": 6,
+    "seed": 0
+  },
+  "camera": {
+    "width": 128,
+    "height": 96,
+    "channels": 3,
+    "dtype": "uint8",
+    "renderer": "tiny",
+    "fov_vertical_deg": 60.0,
+    "fov_horizontal_deg": 75.178,
+    "aspect": 1.3333333333333333,
+    "near_m": 0.0397,
+    "far_m": 1000.0,
+    "intrinsics_px": {
+      "fx": 83.1384,
+      "fy": 83.1384,
+      "cx": 64.0,
+      "cy": 48.0,
+      "note": "square pixels; derived from the vertical FOV and aspect=w/h"
+    },
+    "extrinsics": {
+      "eye": "drone position + [0, 0, offset_world_z] in world frame",
+      "offset_world_z_m": 0.0397,
+      "look_direction": "body +x (forward)",
+      "up_vector": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "note": "up is world +z, copied from BaseAviary._getDroneImages, so the image does not roll with the airframe"
+    },
+    "shadow": false,
+    "segmentation": false,
+    "deviations_from_baseaviary": [
+      "resolution 128x96 instead of the hardcoded 64x48",
+      "aspect = w/h instead of 1.0 (BaseAviary stretches pixels)",
+      "renderer passed explicitly instead of left to the PyBullet default",
+      "segmentation off by default (not a policy input)",
+      "shadow off by default"
+    ]
+  },
+  "timing": {
+    "buckets": {
+      "reset": {
+        "n": 10,
+        "total_s": 0.5165325370035134,
+        "mean_ms": 51.65325370035134,
+        "p50_ms": 49.443596500168496,
+        "p95_ms": 60.28004635063552,
+        "p99_ms": 62.646886870315946,
+        "min_ms": 47.16650100090192,
+        "max_ms": 63.23859700023604
+      },
+      "control": {
+        "n": 1000,
+        "total_s": 10.28044315385705,
+        "mean_ms": 10.28044315385705,
+        "p50_ms": 9.994224500587734,
+        "p95_ms": 11.809104096482768,
+        "p99_ms": 15.382995567906612,
+        "min_ms": 8.649943994896603,
+        "max_ms": 36.44713500034413
+      },
+      "physics": {
+        "n": 1000,
+        "total_s": 3.7286701760986034,
+        "mean_ms": 3.7286701760986034,
+        "p50_ms": 3.6444870002014795,
+        "p95_ms": 4.342475496378028,
+        "p99_ms": 5.453387169545748,
+        "min_ms": 3.118487002211623,
+        "max_ms": 9.54466599796433
+      },
+      "render": {
+        "n": 1000,
+        "total_s": 12.984531565971338,
+        "mean_ms": 12.984531565971338,
+        "p50_ms": 12.935879999531608,
+        "p95_ms": 13.6016033492524,
+        "p99_ms": 15.167388690679218,
+        "min_ms": 12.122387999625062,
+        "max_ms": 18.060123000395834
+      },
+      "encode": {
+        "n": 1000,
+        "total_s": 1.5129682919578045,
+        "mean_ms": 1.5129682919578045,
+        "p50_ms": 1.4941555009500007,
+        "p95_ms": 1.7637974993704117,
+        "p99_ms": 2.1456704301635905,
+        "min_ms": 1.2141379993408918,
+        "max_ms": 2.5818119993346045
+      },
+      "write": {
+        "n": 1000,
+        "total_s": 0.3783703570134094,
+        "mean_ms": 0.3783703570134094,
+        "p50_ms": 0.3626320003604633,
+        "p95_ms": 0.4843687493121251,
+        "p99_ms": 0.6082496401904791,
+        "min_ms": 0.27777700051956344,
+        "max_ms": 0.9185430008074036
+      }
+    },
+    "per_episode": [
+      {
+        "episode": 0,
+        "frames": 100,
+        "reset_s": 0.048929604001386906,
+        "plan": {
+          "radius_m": 1.2547846749285816,
+          "altitude_m": 0.45395734275277405,
+          "phase0_rad": 0.25744424357926954,
+          "lap_period_s": 20.0,
+          "tangential_speed_ms": 0.3942022316592689
+        },
+        "scene": {
+          "red_cube_id": 2,
+          "red_xyz": [
+            -0.24173618223573545,
+            0.6566351196001362,
+            0.15
+          ],
+          "blue_sphere_id": 3,
+          "blue_xyz": [
+            0.20637778863886086,
+            -0.44668211211641007,
+            0.15
+          ]
+        },
+        "render_p50_ms": 12.960296500750701,
+        "frame_total_p50_ms": 28.593551500307512
+      },
+      {
+        "episode": 1,
+        "frames": 100,
+        "reset_s": 0.049314789999698405,
+        "plan": {
+          "radius_m": 1.3558955165112536,
+          "altitude_m": 0.5114276100412453,
+          "phase0_rad": 5.03225392396095,
+          "lap_period_s": 20.0,
+          "tangential_speed_ms": 0.4259671393707093
+        },
+        "scene": {
+          "red_cube_id": 2,
+          "red_xyz": [
+            0.2282569087376693,
+            0.2793075800746772,
+            0.15
+          ],
+          "blue_sphere_id": 3,
+          "blue_xyz": [
+            -0.13179965235020957,
+            -0.3560939010639177,
+            0.15
+          ]
+        },
+        "render_p50_ms": 12.860666499364015,
+        "frame_total_p50_ms": 28.373581002597348
+      },
+      {
+        "episode": 2,
+        "frames": 100,
+        "reset_s": 0.048879351999858045,
+        "plan": {
+          "radius_m": 1.032329615669275,
+          "altitude_m": 0.48048755839871743,
+          "phase0_rad": 3.778011505998807,
+          "lap_period_s": 20.0,
+          "tangential_speed_ms": 0.3243159136669769
+        },
+        "scene": {
+          "red_cube_id": 2,
+          "red_xyz": [
+            -0.17744988239226123,
+            0.3076593520161862,
+            0.15
+          ],
+          "blue_sphere_id": 3,
+          "blue_xyz": [
+            -0.08653064956319517,
+            -0.690829157368628,
+            0.15
+          ]
+        },
+        "render_p50_ms": 12.993383500543132,
+        "frame_total_p50_ms": 28.52303599320294
+      },
+      {
+        "episode": 3,
+        "frames": 100,
+        "reset_s": 0.05425543099954666,
+        "plan": {
+          "radius_m": 1.3579890963159353,
+          "altitude_m": 0.5720828873549875,
+          "phase0_rad": 2.019257561808514,
+          "lap_period_s": 20.0,
+          "tangential_speed_ms": 0.4266248568641185
+        },
+        "scene": {
+          "red_cube_id": 2,
+          "red_xyz": [
+            -0.09156269573366077,
+            0.39956700382522337,
+            0.15
+          ],
+          "blue_sphere_id": 3,
+          "blue_xyz": [
+            0.09424498847678531,
+            -0.5898588655774579,
+            0.15
+          ]
+        },
+        "render_p50_ms": 12.977164999938395,
+        "frame_total_p50_ms": 28.36187049979344
+      },
+      {
+        "episode": 4,
+        "frames": 100,
+        "reset_s": 0.04957240300063859,
+        "plan": {
+          "radius_m": 1.3532287742430915,
+          "altitude_m": 0.4457185343589163,
+          "phase0_rad": 2.5801686566303568,
+          "lap_period_s": 20.0,
+          "tangential_speed_ms": 0.42512935757884174
+        },
+        "scene": {
+          "red_cube_id": 2,
+          "red_xyz": [
+            -0.026653359689926215,
+            0.635641154024742,
+            0.15
+          ],
+          "blue_sphere_id": 3,
+          "blue_xyz": [
+            -0.14020807527076096,
+            -0.40527985132625055,
+            0.15
+          ]
+        },
+        "render_p50_ms": 12.945753499479906,
+        "frame_total_p50_ms": 28.78069750386203
+      },
+      {
+        "episode": 5,
+        "frames": 100,
+        "reset_s": 0.0503397850006877,
+        "plan": {
+          "radius_m": 1.1528544405192513,
+          "altitude_m": 0.5095498120333832,
+          "phase0_rad": 2.5851420625491373,
+          "lap_period_s": 20.0,
+          "tangential_speed_ms": 0.3621799040993651
+        },
+        "scene": {
+          "red_cube_id": 2,
+          "red_xyz": [
+            -0.06554837265140984,
+            0.31914698698031563,
+            0.15
+          ],
+          "blue_sphere_id": 3,
+          "blue_xyz": [
+            0.05603337634316452,
+            -0.7007749249188148,
+            0.15
+          ]
+        },
+        "render_p50_ms": 13.10086049943493,
+        "frame_total_p50_ms": 29.13922449806705
+      },
+      {
+        "episode": 6,
+        "frames": 100,
+        "reset_s": 0.06323859700023604,
+        "plan": {
+          "radius_m": 1.1648369390006224,
+          "altitude_m": 0.442659028038263,
+          "phase0_rad": 4.5789274803807025,
+          "lap_period_s": 20.0,
+          "tangential_speed_ms": 0.36594431701943775
+        },
+        "scene": {
+          "red_cube_id": 2,
+          "red_xyz": [
+            0.022956053809812194,
+            0.5165462464298722,
+            0.15
+          ],
+          "blue_sphere_id": 3,
+          "blue_xyz": [
+            0.06331709500660371,
+            -0.3379672507673139,
+            0.15
+          ]
+        },
+        "render_p50_ms": 12.98058299926197,
+        "frame_total_p50_ms": 28.844999001194083
+      },
+      {
+        "episode": 7,
+        "frames": 100,
+        "reset_s": 0.04817203399943537,
+        "plan": {
+          "radius_m": 1.0155444248390064,
+          "altitude_m": 0.555425495432016,
+          "phase0_rad": 5.021328467379921,
+          "lap_period_s": 20.0,
+          "tangential_speed_ms": 0.3190426904468294
+        },
+        "scene": {
+          "red_cube_id": 2,
+          "red_xyz": [
+            -0.011746593807433037,
+            0.6704959397818835,
+            0.15
+          ],
+          "blue_sphere_id": 3,
+          "blue_xyz": [
+            0.2241795983721765,
+            -0.688051918749575,
+            0.15
+          ]
+        },
+        "render_p50_ms": 12.8721389992279,
+        "frame_total_p50_ms": 28.458552000302006
+      },
+      {
+        "episode": 8,
+        "frames": 100,
+        "reset_s": 0.04716650100090192,
+        "plan": {
+          "radius_m": 1.3038747008253477,
+          "altitude_m": 0.5551795363399682,
+          "phase0_rad": 0.9465862152895711,
+          "lap_period_s": 20.0,
+          "tangential_speed_ms": 0.40962431813145017
+        },
+        "scene": {
+          "red_cube_id": 2,
+          "red_xyz": [
+            -0.2112558501651452,
+            0.49011837935950886,
+            0.15
+          ],
+          "blue_sphere_id": 3,
+          "blue_xyz": [
+            0.01742941425827982,
+            -0.4224368664369861,
+            0.15
+          ]
+        },
+        "render_p50_ms": 12.96933049979998,
+        "frame_total_p50_ms": 28.20950799377897
+      },
+      {
+        "episode": 9,
+        "frames": 100,
+        "reset_s": 0.056664040001123794,
+        "plan": {
+          "radius_m": 1.226836797153429,
+          "altitude_m": 0.5970135541271336,
+          "phase0_rad": 1.4773819084821809,
+          "lap_period_s": 20.0,
+          "tangential_speed_ms": 0.3854221469090844
+        },
+        "scene": {
+          "red_cube_id": 2,
+          "red_xyz": [
+            0.08469250885149682,
+            0.7116718075355174,
+            0.15
+          ],
+          "blue_sphere_id": 3,
+          "blue_xyz": [
+            -0.1707223471483828,
+            -0.5509397405420445,
+            0.15
+          ]
+        },
+        "render_p50_ms": 12.746791499012033,
+        "frame_total_p50_ms": 28.050721500221698
+      }
+    ],
+    "pipeline_wall_s": 29.65557026999886,
+    "recorded_buckets_total_s": 29.40151608190172,
+    "unaccounted_s": 0.2540541880971432,
+    "process_wall_s": 31.5231813219998,
+    "timer_overhead_ns": 144.48636999986775,
+    "note": "unaccounted_s is pipeline time outside the six buckets: the JPEG size subsample, metadata construction and loop overhead. Throughput is computed from pipeline_wall_s, so it includes that overhead."
+  },
+  "throughput": {
+    "recorded_frames_per_wall_second": 33.7204778358841,
+    "sim_seconds_recorded": 200.0,
+    "real_time_factor": 6.74409556717682,
+    "roadmap_4_4_planning_assumption": "5-20 recorded frames/wall-second"
+  },
+  "bytes_per_frame": {
+    "raw_rgb_uint8": 36864,
+    "png_on_disk": {
+      "mean": 1421.275,
+      "p50": 1411.0,
+      "min": 1022.0,
+      "max": 1847.0,
+      "compress_level": 6
+    },
+    "jpeg_in_memory_subsample": {
+      "90": {
+        "n": 100,
+        "mean": 3922.13,
+        "p50": 3937.0,
+        "encode_p50_ms": 0.4150775002926821,
+        "subsampling": "PIL default for this quality"
+      },
+      "75": {
+        "n": 100,
+        "mean": 2651.49,
+        "p50": 2656.5,
+        "encode_p50_ms": 0.23399199926643632,
+        "subsampling": "PIL default for this quality"
+      }
+    },
+    "note": "PNG is what was written to disk, so the recorded frames stay losslessly re-encodable. JPEG is the format assumed by roadmap v3 §4.4 and is measured in memory on a subsample; its encode time is excluded from the buckets."
+  },
+  "memory_kb": {
+    "vmrss_after_imports": 69716,
+    "vmrss_after_first_reset": 110436,
+    "vmrss_at_end": 116540,
+    "vmhwm_peak": 116544,
+    "ru_maxrss": 116228,
+    "note": "ru_maxrss is a lifetime peak that includes interpreter and import cost. Frames are streamed to disk, never accumulated in memory."
+  },
+  "provenance": {
+    "dronevla_version": "0.0.1",
+    "repo": {
+      "sha": "b278ac53273828ed936897c39cc61d8f798b506f",
+      "dirty": true,
+      "remote": null
+    },
+    "gym_pybullet_drones": {
+      "sha": "7ebad1ecabd28a7000add2d05f888aa2e837c2cc",
+      "dirty": false,
+      "remote": "https://github.com/learnsyslab/gym-pybullet-drones.git"
+    },
+    "python": "3.12.3",
+    "numpy": "2.5.3",
+    "pillow": "12.3.0",
+    "pybullet_api_version": 202010061,
+    "pybullet_numpy_enabled": 1,
+    "torch_imported": false
+  },
+  "host": {
+    "uname": "Linux <host> 6.18.40.1-microsoft-standard-WSL2 #1 SMP PREEMPT_DYNAMIC Fri Jul 31 22:12:15 UTC 2026 x86_64 x86_64",
+    "cpu_count_affinity": 16,
+    "cpu_count_total": 16,
+    "loadavg_1_5_15": [
+      0.79443359375,
+      0.3515625,
+      0.25244140625
+    ],
+    "thread_env": {
+      "OMP_NUM_THREADS": null,
+      "MKL_NUM_THREADS": null,
+      "OPENBLAS_NUM_THREADS": null,
+      "NUMEXPR_NUM_THREADS": null
+    },
+    "renderer_env": {
+      "GALLIUM_DRIVER": null,
+      "LIBGL_ALWAYS_SOFTWARE": null,
+      "DISPLAY": ":0",
+      "WAYLAND_DISPLAY": "wayland-0"
+    },
+    "meminfo_memtotal_kb": 7907916,
+    "meminfo_memavailable_kb": 6658348,
+    "meminfo_swaptotal_kb": 2097152,
+    "disk_free_gb": 1021.46,
+    "disk_total_gb": 1081.1,
+    "windows": {
+      "collected": false,
+      "reason": "stale",
+      "stale": true,
+      "age_s": 2154.8,
+      "max_age_s": 900.0,
+      "captured_local": "2026-10-04T22:19:36.4516650+09:00",
+      "note": "re-run scripts/host_state.ps1 just before the profile to record the conditions of that run"
+    }
+  },
+  "checks": {
+    "frame_files_on_disk": {
+      "pass": true,
+      "found": 1000,
+      "expected": 1000
+    },
+    "metadata_rows": {
+      "pass": true,
+      "found": 1000,
+      "expected": 1000
+    },
+    "no_nan_or_inf": {
+      "pass": true,
+      "non_finite_values": 0,
+      "values_checked": 23000
+    },
+    "wall_clock_monotonic": {
+      "pass": true,
+      "backward_steps": 0
+    },
+    "sim_time_strictly_increasing_per_episode": {
+      "pass": true
+    },
+    "sim_time_interval_equals_record_period": {
+      "pass": true,
+      "expected_s": 0.2,
+      "worst_abs_deviation_s": 2.831068712794149e-15,
+      "physics_steps_per_frame": 48
+    },
+    "decoded_shape_and_dtype": {
+      "pass": true,
+      "expected": [
+        [
+          96,
+          128,
+          3
+        ],
+        "uint8"
+      ],
+      "found": [
+        [
+          [
+            96,
+            128,
+            3
+          ],
+          "uint8"
+        ]
+      ],
+      "frames_decoded": 40
+    },
+    "frames_are_not_identical": {
+      "pass": true,
+      "unique_images": 40,
+      "sampled": 40
+    },
+    "frames_are_not_blank": {
+      "pass": true,
+      "min_pixel_std": 44.58746438321594,
+      "max_pixel_std": 72.553790541894
+    }
+  },
+  "artifacts": {
+    "frames_dir": "/home/pchan/dronevla/results/env_profile/frames",
+    "frames_metadata": "/home/pchan/dronevla/results/env_profile/frames.jsonl"
+  }
+}

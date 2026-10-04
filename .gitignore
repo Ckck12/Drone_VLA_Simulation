@@ -18,3 +18,4 @@ results/gui_run/
 results/env_profile*/
 results/**/frames/
 *.npy
+results/playground/
