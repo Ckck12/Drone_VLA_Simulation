@@ -8,11 +8,12 @@
     summary.png        위에서 본 계획 경로 vs 실제 경로, 시간별 속도·추종 오차
     camera_sheet.png   드론 앞 카메라(정책이 보게 될 128x96 화면) 샘플
     frames/            카메라 프레임 원본
-그리고 터미널에 속도·추종 오차·물체와의 최소 거리·충돌 여부가 출력됩니다.
+그리고 터미널에 속도·추종 오차·호버 정확도·화면 속 하늘 비율·물체와의 거리가 출력됩니다.
 """
 
 # ============================== 여기를 바꾸세요 ==============================
 
+# --- 비행 -------------------------------------------------------------------
 SPEED_MPS = 0.3        # 수평 비행 속도 [m/s]. 로드맵 §4.3 계약 상한은 0.5
 ALTITUDE_M = 0.5       # 비행 고도 [m]. 물체 높이보다 낮으면 부딪힐 수 있음
 
@@ -28,6 +29,7 @@ LOOP = False           # True: 마지막 지점 다음 처음으로 돌아가 �
 YAW_MODE = "travel"    # "travel": 진행 방향을 바라봄 / "fixed": FIXED_YAW_DEG로 고정
 FIXED_YAW_DEG = 0.0    # 0 = +x 방향, 90 = +y 방향
 
+# --- 물체 -------------------------------------------------------------------
 OBJECTS = [            # 바닥에 놓을 물체. 원하는 만큼 추가/삭제
     # shape: "box" | "sphere" | "cylinder"
     # color: "red" "blue" "green" "yellow" "white" "black" 또는 (r, g, b) 0~1
@@ -38,13 +40,30 @@ OBJECTS = [            # 바닥에 놓을 물체. 원하는 만큼 추가/삭제
     dict(shape="cylinder", color="green", xy=(0.5, 1.5),  size=0.10, height=0.6),
 ]
 
+# --- 카메라 -----------------------------------------------------------------
+CAMERA_MOUNT = "gimbal"  # "gimbal": 짐벌로 안정화. 기체가 기울어도 화면은 수평 유지 (Mavic 방식)
+                         # "rigid" : 기체에 고정. 기체와 같이 숙이고 같이 옆으로 기울어짐
+                         # "legacy": Phase 0 측정 때와 같은 방식 (기울기 설정 없음)
+CAMERA_TILT_DEG = -20.0  # 카메라를 아래로 몇 도 숙일지. 음수 = 아래. -90(바로 아래) ~ 70
+CAMERA_VFOV_DEG = 47.0   # 세로 화각 [도]. 47 ≈ Mavic 4 Pro 메인 카메라(대각 72°, 4:3). Phase 0은 60
+CAMERA_HZ = 5            # 카메라 저장 주기 [Hz]. 60의 약수(1 2 3 4 5 6 10 ...), 0이면 저장 안 함
+
+# --- 위치 추정 노이즈 ---------------------------------------------------------
+# 실제 드론은 자기 위치를 GPS·카메라로 "추정"하고, 그 추정은 항상 조금 틀립니다.
+# 컨트롤러는 아래 오차가 섞인 위치를 받습니다. 카메라는 진짜 위치에서 찍습니다.
+POSITION_NOISE_XY_M = 0.03  # 수평 위치 오차의 크기(표준편차) [m]. 0이면 완벽한 위치(정답지)
+POSITION_NOISE_Z_M = 0.01   # 수직 위치 오차 [m]. Mavic 스펙의 수평:수직 = 0.3:0.1 비율
+NOISE_CORRELATION_S = 1.0   # 오차가 얼마나 천천히 변하는지 [s]. 실제 추정 오차는 천천히 흘러다님
+NOISE_SEED = 0              # 같은 값이면 같은 노이즈 -> 다른 설정끼리 공정하게 비교
+
+# --- 기타 -------------------------------------------------------------------
 DURATION_S = 20.0      # 시뮬레이션 길이 [sim-초]
-CAMERA_HZ = 5          # 앞 카메라 저장 주기 [Hz]. 60의 약수(1 2 3 4 5 6 10 ...), 0이면 저장 안 함
 GUI_FOLLOW = True      # GUI 시점이 드론을 따라감
 
 # ============================================================================
 
 import argparse
+import math
 import pathlib
 import subprocess
 import sys
@@ -56,7 +75,7 @@ import pybullet as p
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))     # scripts/ is not the package root
 
-from dronevla.camera import FrontCamera                                # noqa: E402
+from dronevla.camera import MOUNTS, FrontCamera                        # noqa: E402
 from gym_pybullet_drones.control.DSLPIDControl import DSLPIDControl    # noqa: E402
 from gym_pybullet_drones.envs.CtrlAviary import CtrlAviary             # noqa: E402
 from gym_pybullet_drones.utils.enums import DroneModel, Physics        # noqa: E402
@@ -64,7 +83,9 @@ from gym_pybullet_drones.utils.utils import sync                       # noqa: E
 
 PYB_HZ, CTRL_HZ = 240, 60      # §4.3 contract rates; not knobs
 TAKEOFF_S = 2.0                # hold over the first waypoint while climbing
+HOVER_SETTLE_S = 1.0           # ignore this long after the route ends before judging hover
 START_Z = 0.1
+SKY_RGB = (255, 255, 255)      # TinyRenderer's background; the ground never renders this
 COLORS = {"red": (1, 0, 0), "blue": (0, 0, 1), "green": (0, 0.7, 0),
           "yellow": (1, 0.85, 0), "white": (0.95, 0.95, 0.95), "black": (0.1, 0.1, 0.1)}
 
@@ -80,8 +101,18 @@ def check_knobs():
         problems.append("WAYPOINTS needs at least one point")
     if YAW_MODE not in ("travel", "fixed"):
         problems.append('YAW_MODE must be "travel" or "fixed"')
+    if CAMERA_MOUNT not in MOUNTS:
+        problems.append(f"CAMERA_MOUNT must be one of {MOUNTS}")
+    if not -90 <= CAMERA_TILT_DEG <= 70:
+        problems.append("CAMERA_TILT_DEG must be within -90 .. 70")
+    if not 1 <= CAMERA_VFOV_DEG <= 170:
+        problems.append("CAMERA_VFOV_DEG must be within 1 .. 170")
     if CAMERA_HZ < 0 or (CAMERA_HZ and CTRL_HZ % CAMERA_HZ):
         problems.append(f"CAMERA_HZ must divide {CTRL_HZ} (or be 0)")
+    if POSITION_NOISE_XY_M < 0 or POSITION_NOISE_Z_M < 0:
+        problems.append("POSITION_NOISE_*_M must be >= 0")
+    if NOISE_CORRELATION_S <= 0:
+        problems.append("NOISE_CORRELATION_S must be > 0")
     for i, o in enumerate(OBJECTS):
         if o.get("shape") not in ("box", "sphere", "cylinder"):
             problems.append(f"OBJECTS[{i}]: unknown shape {o.get('shape')!r}")
@@ -93,6 +124,8 @@ def check_knobs():
     if SPEED_MPS > 0.5:
         print(f"[note] SPEED_MPS {SPEED_MPS} > 0.5 m/s: allowed here, but above the "
               "roadmap §4.3 contract cap, so a policy would never be asked to fly this fast")
+    if CAMERA_MOUNT == "legacy" and CAMERA_TILT_DEG != 0:
+        print("[note] CAMERA_MOUNT 'legacy' has no tilt, so CAMERA_TILT_DEG is ignored")
 
 
 # ------------------------------------------------------------------- the route
@@ -135,6 +168,29 @@ class Route:
         return (b - a) / n if n > 0 else np.array([1.0, 0.0])
 
 
+# ------------------------------------------------------------- estimate noise
+class PositionEstimateNoise:
+    """Error added to the position the controller is given.
+
+    A first-order Gauss-Markov process per axis: the error wanders slowly with a time
+    constant of NOISE_CORRELATION_S, and its long-run standard deviation is exactly the
+    configured sigma. White noise at 60 Hz would be the wrong model -- real position
+    estimates (GNSS, visual odometry) are wrong in a *slowly drifting* way, which is what
+    makes a real drone wander while hovering instead of buzzing in place.
+    """
+
+    def __init__(self, sigma_xyz, tau_s, dt, seed):
+        self.sigma = np.asarray(sigma_xyz, dtype=float)
+        self.a = math.exp(-dt / tau_s)
+        self.b = math.sqrt(1.0 - self.a ** 2)
+        self.rng = np.random.default_rng(seed)
+        self.e = self.rng.normal(size=3) * self.sigma    # start in the stationary state
+
+    def step(self):
+        self.e = self.a * self.e + self.b * self.sigma * self.rng.normal(size=3)
+        return self.e
+
+
 # ------------------------------------------------------------------- the scene
 def add_objects(client):
     ids = []
@@ -171,6 +227,18 @@ def draw_route(route, client):
                            lineColorRGB=[1, 0.5, 0], lineWidth=2, physicsClientId=client)
 
 
+def make_camera():
+    legacy = CAMERA_MOUNT == "legacy"
+    return FrontCamera(
+        fov_deg=CAMERA_VFOV_DEG,
+        mount=CAMERA_MOUNT,
+        tilt_deg=0.0 if legacy else CAMERA_TILT_DEG,
+        # a front-mounted lens should not have its near plane hide the drone's own props;
+        # legacy keeps BaseAviary's near = L so it stays identical to Phase 0
+        near=0.0397 if legacy else 0.01,
+    )
+
+
 # -------------------------------------------------------------------- main
 def main():
     ap = argparse.ArgumentParser()
@@ -197,14 +265,18 @@ def main():
     objects = add_objects(env.CLIENT)
     if gui:
         draw_route(route, env.CLIENT)
-    cam = FrontCamera()
+    cam = make_camera()
+    noise = PositionEstimateNoise(
+        (POSITION_NOISE_XY_M, POSITION_NOISE_XY_M, POSITION_NOISE_Z_M),
+        NOISE_CORRELATION_S, 1.0 / CTRL_HZ, NOISE_SEED)
     drone = int(env.DRONE_IDS[0])
 
     steps = int(DURATION_S * CTRL_HZ)
     cam_every = CTRL_HZ // CAMERA_HZ if CAMERA_HZ else 0
-    log = {k: [] for k in ("t", "pos", "vel", "target", "moving")}
+    log = {k: [] for k in ("t", "pos", "est", "vel", "rpy", "target", "moving")}
     contacts = {i: 0 for i in range(len(objects))}
     min_dist = {i: np.inf for i in range(len(objects))}
+    sky = []
     action = np.zeros((1, 4))
     yaw = np.radians(FIXED_YAW_DEG)
     wall0 = time.time()
@@ -218,14 +290,18 @@ def main():
             yaw = float(np.arctan2(d[1], d[0]))
 
         obs, _, _, _, _ = env.step(action)
-        state = obs[0]
+        state = obs[0]                        # the truth, from the physics engine
+        believed = state.copy()               # what the controller is told
+        believed[0:3] += noise.step()
         action[0], _, _ = ctrl.computeControlFromState(
-            control_timestep=env.CTRL_TIMESTEP, state=state,
+            control_timestep=env.CTRL_TIMESTEP, state=believed,
             target_pos=target, target_rpy=np.array([0.0, 0.0, yaw]), target_vel=target_vel)
 
         log["t"].append(t)
         log["pos"].append(state[0:3].copy())
+        log["est"].append(believed[0:3].copy())
         log["vel"].append(state[10:13].copy())
+        log["rpy"].append(state[7:10].copy())
         log["target"].append(target)
         log["moving"].append(moving)
 
@@ -238,8 +314,10 @@ def main():
 
         if cam_every and i % cam_every == 0:
             from PIL import Image
+            # the camera is physically on the drone, so it renders from the TRUE pose
             rgb = cam.render(state[0:3], state[3:7], client=env.CLIENT)
             Image.fromarray(rgb).save(frames_dir / f"frame_{i // cam_every:05d}.png")
+            sky.append(float(np.all(rgb == SKY_RGB, axis=-1).mean()))
 
         if gui:
             if GUI_FOLLOW:
@@ -250,13 +328,14 @@ def main():
 
     env.close()
     report(log, objects, contacts, min_dist, route, run_dir, frames_dir if CAMERA_HZ else None,
-           time.time() - wall0)
+           sky, cam, time.time() - wall0)
 
 
 # -------------------------------------------------------------------- results
-def report(log, objects, contacts, min_dist, route, run_dir, frames_dir, wall_s):
+def report(log, objects, contacts, min_dist, route, run_dir, frames_dir, sky, cam, wall_s):
     t = np.array(log["t"])
-    pos, vel, tgt = np.array(log["pos"]), np.array(log["vel"]), np.array(log["target"])
+    pos, est = np.array(log["pos"]), np.array(log["est"])
+    vel, rpy, tgt = np.array(log["vel"]), np.array(log["rpy"]), np.array(log["target"])
     moving = np.array(log["moving"])
     hspeed = np.linalg.norm(vel[:, :2], axis=1)
     err = np.linalg.norm(pos - tgt, axis=1)
@@ -273,17 +352,52 @@ def report(log, objects, contacts, min_dist, route, run_dir, frames_dir, wall_s)
               f"max {err[moving].max():.3f} m")
     else:
         print("speed   : the route never moved (still taking off, or one waypoint)")
+    if airborne.any():
+        tilt = np.degrees(np.max(np.hypot(rpy[airborne, 0], rpy[airborne, 1])))
+        print(f"attitude: max airframe tilt {tilt:.1f} deg (Mavic 4 Pro limit: 35 deg)")
     print(f"route   : {route.total:.2f} m long, needs {route.total / SPEED_MPS:.1f} s at this "
           f"speed (+{TAKEOFF_S:.0f} s takeoff); DURATION_S is {DURATION_S:.0f} s")
+
     if not LOOP:
         # Judge arrival by where the drone actually is, not by where the target got to:
         # a drone pinned against an obstacle still has its target reach the end.
         end_err = float(np.linalg.norm(pos[-1, :2] - route.pts[-1]))
         verdict = "arrived" if end_err < 0.15 else "did NOT arrive"
         print(f"arrival : drone ended {end_err:.3f} m from the last waypoint -> {verdict}")
-    if airborne.any():
-        print(f"altitude: {pos[airborne, 2].min():.3f} .. {pos[airborne, 2].max():.3f} m "
-              f"(asked {ALTITUDE_M})")
+        hover_from = TAKEOFF_S + route.total / SPEED_MPS + HOVER_SETTLE_S
+        window = t >= hover_from
+        if window.sum() >= 2 * CTRL_HZ:
+            dh = np.linalg.norm(pos[window, :2] - route.pts[-1], axis=1)
+            dz = np.abs(pos[window, 2] - ALTITUDE_M)
+            print(f"hover   : over the last {window.sum() / CTRL_HZ:.1f} s, true position vs "
+                  f"the hover point -- horizontal max {dh.max():.3f} m (p95 "
+                  f"{np.percentile(dh, 95):.3f}), vertical max {dz.max():.3f} m (p95 "
+                  f"{np.percentile(dz, 95):.3f})")
+            print("          for reference, Mavic 4 Pro spec with vision positioning: "
+                  "+-0.3 m horizontal, +-0.1 m vertical (a 1 kg drone, ~40x this one's mass)")
+        else:
+            print(f"hover   : not measured -- needs >= 2 s of hovering after the route; "
+                  f"raise DURATION_S above {hover_from + 2:.1f}")
+
+    if POSITION_NOISE_XY_M or POSITION_NOISE_Z_M:
+        belief = np.linalg.norm(est - pos, axis=1)
+        print(f"noise   : sigma xy {POSITION_NOISE_XY_M} m, z {POSITION_NOISE_Z_M} m, "
+              f"correlation {NOISE_CORRELATION_S} s -> the controller's belief was off by "
+              f"{belief.mean():.3f} m on average, {belief.max():.3f} m at worst")
+    else:
+        print("noise   : off -- the controller was given the exact true position")
+
+    d = cam.describe()
+    tilt_txt = (f"tilt {d['extrinsics']['tilt_deg']:+.0f} deg"
+                if d["extrinsics"]["mount"] != "legacy" else "no tilt")
+    print(f"camera  : {d['extrinsics']['mount']}, {tilt_txt}, FOV {d['fov_vertical_deg']:.0f} "
+          f"deg vertical / {d['fov_diagonal_deg']:.0f} deg diagonal")
+    if sky:
+        s = np.array(sky) * 100
+        print(f"          sky fills {s.mean():.1f}% of the frame on average "
+              f"(min {s.min():.1f}%, max {s.max():.1f}%, std {s.std():.2f}%) -- a steady camera "
+              "keeps this nearly constant")
+
     for k, (_, o, top) in enumerate(objects):
         hit = f"HIT for {contacts[k] / CTRL_HZ:.2f} s" if contacts[k] else "no contact"
         print(f"object  : {o['color']!s:>6} {o['shape']:<8} at {tuple(o['xy'])}, top z={top:.2f} m"
@@ -291,7 +405,7 @@ def report(log, objects, contacts, min_dist, route, run_dir, frames_dir, wall_s)
     if pos[-1, 2] < 0.05 and t[-1] > TAKEOFF_S:
         print("WARNING : the drone ended on the ground -- it probably crashed")
 
-    plot(t, pos, tgt, hspeed, err, objects, route, run_dir / "summary.png")
+    plot(t, pos, est, tgt, hspeed, err, objects, route, run_dir / "summary.png")
     print(f"\nsaved   : {run_dir / 'summary.png'}")
     if frames_dir is not None:
         sheet = run_dir / "camera_sheet.png"
@@ -301,7 +415,7 @@ def report(log, objects, contacts, min_dist, route, run_dir, frames_dir, wall_s)
         print(f"          {sheet}")
 
 
-def plot(t, pos, tgt, hspeed, err, objects, route, out):
+def plot(t, pos, est, tgt, hspeed, err, objects, route, out):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -311,7 +425,9 @@ def plot(t, pos, tgt, hspeed, err, objects, route, out):
     ax = fig.add_subplot(1, 2, 1)
     pts = np.array(route.pts)
     ax.plot(pts[:, 0], pts[:, 1], "--", c="tab:orange", lw=1.5, label="planned route")
-    ax.plot(pos[:, 0], pos[:, 1], c="tab:blue", lw=1.8, label="flown path")
+    if POSITION_NOISE_XY_M or POSITION_NOISE_Z_M:
+        ax.plot(est[:, 0], est[:, 1], c="0.6", lw=0.8, label="where the controller thought it was")
+    ax.plot(pos[:, 0], pos[:, 1], c="tab:blue", lw=1.8, label="flown path (truth)")
     ax.plot(*pos[0, :2], "o", c="tab:blue", ms=6)
     for _, o, _ in objects:
         c = COLORS.get(o["color"], o["color"])
@@ -322,8 +438,9 @@ def plot(t, pos, tgt, hspeed, err, objects, route, out):
         ax.add_patch(patch)
     ax.set_aspect("equal")
     ax.set_xlabel("x [m]"); ax.set_ylabel("y [m]")
-    ax.set_title(f"Top view — speed {SPEED_MPS} m/s, altitude {ALTITUDE_M} m")
-    ax.grid(alpha=0.3); ax.legend(loc="best", fontsize=9)
+    ax.set_title(f"Top view — speed {SPEED_MPS} m/s, altitude {ALTITUDE_M} m, "
+                 f"noise xy {POSITION_NOISE_XY_M} m")
+    ax.grid(alpha=0.3); ax.legend(loc="best", fontsize=8)
 
     ax1 = fig.add_subplot(2, 2, 2)
     ax1.plot(t, hspeed, c="tab:blue", label="flown horizontal speed")
@@ -332,7 +449,7 @@ def plot(t, pos, tgt, hspeed, err, objects, route, out):
     ax1.set_ylabel("speed [m/s]"); ax1.legend(fontsize=8); ax1.grid(alpha=0.3)
 
     ax2 = fig.add_subplot(2, 2, 4, sharex=ax1)
-    ax2.plot(t, err, c="tab:red", label="distance to target")
+    ax2.plot(t, err, c="tab:red", label="distance to target (truth)")
     ax2.plot(t, pos[:, 2], c="tab:green", label="altitude z")
     ax2.axvline(TAKEOFF_S, c="0.6", lw=1)
     ax2.set_xlabel("sim time [s]"); ax2.set_ylabel("[m]")
