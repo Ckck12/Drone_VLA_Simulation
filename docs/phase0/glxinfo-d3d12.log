@@ -1,0 +1,54 @@
+# glxinfo -B --- GALLIUM_DRIVER=d3d12 forced
+# captured      : 2026-10-04T21:59:02+09:00
+# shell         : non-interactive, wsl.exe -d Ubuntu-24.04 -- bash <this script>
+# mesa-utils    : 9.0.0-2
+# libgl1-mesa-dri: 25.2.8-0ubuntu0.24.04.4
+# DISPLAY                     : :0
+# WAYLAND_DISPLAY             : wayland-0
+# GALLIUM_DRIVER              : d3d12
+# LIBGL_ALWAYS_SOFTWARE       : <unset>
+# MESA_LOADER_DRIVER_OVERRIDE : <unset>
+
+name of display: :0
+display: :0  screen: 0
+direct rendering: Yes
+Extended renderer info (GLX_MESA_query_renderer):
+    Vendor: Microsoft Corporation (0xffffffff)
+    Device: D3D12 (Intel(R) Iris(R) Xe Graphics) (0xffffffff)
+    Version: 25.2.8
+    Accelerated: yes
+    Video memory: 8099MB
+    Unified memory: yes
+    Preferred profile: core (0x1)
+    Max core profile version: 4.1
+    Max compat profile version: 4.1
+    Max GLES1 profile version: 1.1
+    Max GLES[23] profile version: 3.0
+Memory info (GL_ATI_meminfo):
+    VBO free memory - total: 7308 MB, largest block: 7308 MB
+    VBO free aux. memory - total: 0 MB, largest block: 0 MB
+    Texture free memory - total: 7308 MB, largest block: 7308 MB
+    Texture free aux. memory - total: 0 MB, largest block: 0 MB
+    Renderbuffer free memory - total: 7308 MB, largest block: 7308 MB
+    Renderbuffer free aux. memory - total: 0 MB, largest block: 0 MB
+Memory info (GL_NVX_gpu_memory_info):
+    Dedicated video memory: 8099 MB
+    Total available memory: 8099 MB
+    Currently available dedicated video memory: 7308 MB
+OpenGL vendor string: Microsoft Corporation
+OpenGL renderer string: D3D12 (Intel(R) Iris(R) Xe Graphics)
+OpenGL core profile version string: 4.1 (Core Profile) Mesa 25.2.8-0ubuntu0.24.04.4
+OpenGL core profile shading language version string: 4.10
+OpenGL core profile context flags: (none)
+OpenGL core profile profile mask: core profile
+
+OpenGL version string: 4.1 (Compatibility Profile) Mesa 25.2.8-0ubuntu0.24.04.4
+OpenGL shading language version string: 4.10
+OpenGL context flags: (none)
+OpenGL profile mask: compatibility profile
+
+OpenGL ES profile version string: OpenGL ES 3.0 Mesa 25.2.8-0ubuntu0.24.04.4
+OpenGL ES profile shading language version string: OpenGL ES GLSL ES 3.00
+
+
+# --- glxinfo -B exited with status 0

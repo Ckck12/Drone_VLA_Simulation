@@ -1,0 +1,18 @@
+# --- environment: never committed, rebuilt from env-lock-candidate.txt -------------
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# --- pinned third-party source ------------------------------------------------------
+# gym-pybullet-drones is an editable clone pinned by SHA in env-lock-candidate.txt
+# (learnsyslab/gym-pybullet-drones @ 7ebad1e). It is NOT vendored and NOT a submodule
+# -- see docs/phase0_env.md "Repo layout decisions" for why.
+third_party/
+
+# --- measurement output -------------------------------------------------------------
+# Small Phase 0 artifacts (plots, step-response CSVs) ARE committed: they are the
+# evidence behind docs/phase0_env.md. Bulk recordings are not.
+results/gui_run/
+results/**/frames/
+*.npy
