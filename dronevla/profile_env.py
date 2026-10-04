@@ -27,11 +27,13 @@ import json
 import os
 import pathlib
 import platform
+import re
 import resource
 import shutil
 import subprocess
 import sys
 import time
+from datetime import datetime, timezone
 
 import numpy as np
 import pybullet as p
@@ -201,6 +203,9 @@ def parse_args(argv=None):
     ap.add_argument("--host-state", type=pathlib.Path,
                     default=REPO_ROOT / "reports/host_state.json",
                     help="JSON from scripts/host_state.ps1; skipped if absent")
+    ap.add_argument("--host-state-max-age-s", type=float, default=900.0,
+                    help="ignore the host_state file if it is older than this, so a "
+                         "committed snapshot is never reported as this run's conditions")
     ap.add_argument("--label", default="", help="free-text tag stored in the report")
     return ap.parse_args(argv)
 
@@ -517,14 +522,53 @@ def host_block(args) -> dict:
         block["disk_total_gb"] = round(usage.total / 1e9, 2)
     except OSError:
         pass
-    if args.host_state and args.host_state.exists():
-        try:
-            block["windows"] = json.loads(args.host_state.read_text(encoding="utf-8-sig"))
-        except (OSError, ValueError) as exc:
-            block["windows"] = {"error": f"could not read {args.host_state}: {exc}"}
-    else:
-        block["windows"] = {"error": "not collected; run scripts/host_state.ps1 on Windows"}
+    block["windows"] = windows_block(args.host_state, args.host_state_max_age_s)
     return block
+
+
+def windows_block(path, max_age_s: float) -> dict:
+    """Merge the Windows-side snapshot only if it actually describes *this* run.
+
+    The file is committed, so a stale one would otherwise be reported as the conditions of
+    every later run -- including a CI run on a GitHub Ubuntu runner, which has no Windows
+    host at all.
+    """
+    if not path or not path.exists():
+        return {"collected": False,
+                "reason": "no host_state file; run scripts/host_state.ps1 on Windows"}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError) as exc:
+        return {"collected": False, "reason": f"could not read {path}: {exc}"}
+
+    age = host_state_age_s(data.get("captured_local"))
+    if age is None:
+        return {"collected": False, "reason": "captured_local missing or unparseable",
+                "captured_local": data.get("captured_local")}
+    if age > max_age_s:
+        return {"collected": False, "reason": "stale", "stale": True,
+                "age_s": round(age, 1), "max_age_s": max_age_s,
+                "captured_local": data.get("captured_local"),
+                "note": "re-run scripts/host_state.ps1 just before the profile to record "
+                        "the conditions of that run"}
+    data["collected"] = True
+    data["age_s_at_run"] = round(age, 1)
+    return data
+
+
+def host_state_age_s(stamp):
+    """Seconds between `stamp` and now. PowerShell writes 7 fractional digits, which
+    `datetime.fromisoformat` rejects, so the fraction is trimmed to microseconds."""
+    if not isinstance(stamp, str):
+        return None
+    trimmed = re.sub(r"\.(\d{6})\d+", r".\1", stamp)
+    try:
+        then = datetime.fromisoformat(trimmed)
+    except ValueError:
+        return None
+    if then.tzinfo is None:
+        then = then.astimezone()
+    return (datetime.now(timezone.utc) - then).total_seconds()
 
 
 def verify(args, record_dt: float, steps_per_frame: int) -> dict:

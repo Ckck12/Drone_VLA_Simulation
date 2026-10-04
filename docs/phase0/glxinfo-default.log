@@ -1,5 +1,5 @@
 # glxinfo -B --- default environment, no renderer override
-# captured      : 2026-10-04T21:59:02+09:00
+# captured      : 2026-10-04T22:32:46+09:00
 # shell         : non-interactive, wsl.exe -d Ubuntu-24.04 -- bash <this script>
 # mesa-utils    : 9.0.0-2
 # libgl1-mesa-dri: 25.2.8-0ubuntu0.24.04.4
@@ -25,16 +25,16 @@ Extended renderer info (GLX_MESA_query_renderer):
     Max GLES1 profile version: 1.1
     Max GLES[23] profile version: 3.2
 Memory info (GL_ATI_meminfo):
-    VBO free memory - total: 0 MB, largest block: 0 MB
-    VBO free aux. memory - total: 6593 MB, largest block: 6593 MB
-    Texture free memory - total: 0 MB, largest block: 0 MB
-    Texture free aux. memory - total: 6593 MB, largest block: 6593 MB
-    Renderbuffer free memory - total: 0 MB, largest block: 0 MB
-    Renderbuffer free aux. memory - total: 6593 MB, largest block: 6593 MB
+    VBO free memory - total: 576452 MB, largest block: 576452 MB
+    VBO free aux. memory - total: 6543 MB, largest block: 6543 MB
+    Texture free memory - total: 576452 MB, largest block: 576452 MB
+    Texture free aux. memory - total: 6543 MB, largest block: 6543 MB
+    Renderbuffer free memory - total: 576452 MB, largest block: 576452 MB
+    Renderbuffer free aux. memory - total: 6543 MB, largest block: 6543 MB
 Memory info (GL_NVX_gpu_memory_info):
-    Dedicated video memory: 0 MB
-    Total available memory: 7722 MB
-    Currently available dedicated video memory: 0 MB
+    Dedicated video memory: 508480 MB
+    Total available memory: 516202 MB
+    Currently available dedicated video memory: 576452 MB
 OpenGL vendor string: Mesa
 OpenGL renderer string: llvmpipe (LLVM 20.1.2, 256 bits)
 OpenGL core profile version string: 4.5 (Core Profile) Mesa 25.2.8-0ubuntu0.24.04.4

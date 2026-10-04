@@ -71,19 +71,24 @@ for q, v in bp["jpeg_in_memory_subsample"].items():
 print()
 print("=" * 78)
 print("REPLACING THE SECTION 4.4 PLANNING ASSUMPTIONS")
+print("Measured: bytes/frame and frames/wall-second. The two right-hand columns are those")
+print("numbers times a planned frame count -- projections, not measurements.")
 png = bp["png_on_disk"]["mean"]
-print(f"{'stage':<18}{'frames':>9}{'roadmap raw GB':>16}{'measured PNG GB':>17}"
-      f"{'measured gen h':>16}")
+print(f"{'stage':<18}{'frames':>9}{'roadmap raw GB':>16}{'projected PNG GB':>18}"
+      f"{'projected gen h':>17}")
 for stage, episodes, raw_gb, est_h in (("v0.1 thin slice", 80, 0.295, "10-40 min"),
                                        ("v0.2 total", 2000, 7.373, "4.2-16.7 h")):
     frames = episodes * 100
     gb = frames * png / 1e9
-    hours = frames / fa / 3600 * 1.5     # roadmap's own 1.5x overhead factor
+    # The 1.5x is the roadmap's own overhead factor. It nominally covers reset, planning,
+    # rejection and encoding, but reset and encoding are already inside the measured fps,
+    # so this double-counts them and is kept only as a conservative margin.
+    hours = frames / fa / 3600 * 1.5
     shown = f"{hours * 60:.1f} min" if hours < 1 else f"{hours:.2f} h"
-    print(f"{stage:<18}{frames:>9}{raw_gb:>16.3f}{gb:>17.3f}{shown:>16}"
+    print(f"{stage:<18}{frames:>9}{raw_gb:>16.3f}{gb:>18.3f}{shown:>17}"
           f"   (was {est_h})")
-print("Caveats: measured on a plane plus two primitives with no texture; richer scenes "
-      "compress worse and render slower.")
+print("Caveat: measured on a plane plus two untextured primitives; richer scenes compress "
+      "worse and render slower, so both projections will grow.")
 
 print()
 print("=" * 78)
@@ -98,8 +103,17 @@ print(f"WSL MemTotal {h['meminfo_memtotal_kb'] / 1024 / 1024:.1f} GiB, "
       f"disk free {h['disk_free_gb']:.0f} GB")
 print(f"cpu affinity {h['cpu_count_affinity']}, loadavg {h['loadavg_1_5_15']}")
 w = h.get("windows", {})
-print(f"windows: AC={w.get('on_ac_power')}, scheme={w.get('power_scheme_name')!r}, "
-      f"instant CPU load {w.get('cpu_load_percent_instant')}%, "
-      f"host free RAM {w.get('host_ram_free_mb')} MB")
+if w.get("collected") is False:
+    print(f"windows: not merged ({w.get('reason')})")
+elif "on_ac_power" in w:
+    # Reports written before the staleness guard existed carry no age field.
+    age = (f"captured {w['age_s_at_run']:.0f} s before the run"
+           if "age_s_at_run" in w else "age not recorded (pre-guard report)")
+    print(f"windows ({age}): AC={w.get('on_ac_power')}, "
+          f"scheme={w.get('power_scheme_name')!r}, "
+          f"instant CPU load {w.get('cpu_load_percent_instant')}%, "
+          f"host free RAM {w.get('host_ram_free_mb')} MB")
+else:
+    print(f"windows: nothing usable in the host block ({sorted(w)})")
 print(f"torch imported: {a['provenance']['torch_imported']}, "
       f"pybullet numpy enabled: {a['provenance']['pybullet_numpy_enabled']}")

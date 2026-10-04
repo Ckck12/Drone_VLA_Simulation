@@ -1,5 +1,5 @@
 # glxinfo -B --- GALLIUM_DRIVER=d3d12 forced
-# captured      : 2026-10-04T21:59:02+09:00
+# captured      : 2026-10-04T22:32:46+09:00
 # shell         : non-interactive, wsl.exe -d Ubuntu-24.04 -- bash <this script>
 # mesa-utils    : 9.0.0-2
 # libgl1-mesa-dri: 25.2.8-0ubuntu0.24.04.4

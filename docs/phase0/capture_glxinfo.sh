@@ -20,10 +20,13 @@ capture() {
         echo "# MESA_LOADER_DRIVER_OVERRIDE : ${MESA_LOADER_DRIVER_OVERRIDE:-<unset>}"
         echo
         glxinfo -B 2>&1
+        # Capture glxinfo's own status here. Reading $? after the blank echo below would
+        # report the echo's status instead, which is always 0 and says nothing.
+        rc=$?
         echo
-        echo "# --- glxinfo -B exited with status $?"
+        echo "# --- glxinfo -B exited with status ${rc}"
     } > "${out_dir}/${file}"
-    echo "wrote ${file} ($(wc -l < "${out_dir}/${file}") lines)"
+    echo "wrote ${file} ($(wc -l < "${out_dir}/${file}") lines, glxinfo rc recorded)"
 }
 
 capture "default environment, no renderer override" glxinfo-default.log

@@ -81,6 +81,15 @@ so the budget looks comfortable, but a sustained throughput measurement has not 
 
 Scripts live in `scripts/`, outputs in `results/phase0/`. All headless (`DIRECT`, matplotlib `Agg`).
 
+> **Rate caveat, added after the Phase 0 item 6 profile below.** Sections 2 and 3 both ran a
+> **48 Hz** controller, copied from the repo examples. The §4.3 contract uses **60 Hz**,
+> because 240/5 = 48 physics steps per recorded frame is not a whole number of 240/48 = 5-step
+> control periods, while it is a whole number of 240/60 = 4-step periods. So the hover step
+> response and, in particular, the velocity-ripple finding below describe a controller
+> configuration the project does not use. Re-running both scripts at `CTRL_HZ = 60` is seconds
+> of work and has not been done; until it is, treat those numbers as indicative rather than as
+> properties of the controller as configured.
+
 ### 1. Two-object render, visually inspected
 
 `scripts/render_two_objects.py` -> `two_objects_inspect_640x480.png`, `two_objects_policy_128x96.png`
@@ -339,24 +348,34 @@ in the report.
 | JPEG q75 (in memory) | 2 651 | 13.9x smaller | 1.87x larger |
 
 §4.4 assumes "JPEG 평균 6-15 KB/frame". Measured, **JPEG is 2.7x *larger* than lossless
-PNG**, and PNG is 4-10x smaller than the low end of that assumption. At 128x96 the image is
-flat colour over large areas, which PNG's filtering plus DEFLATE handles far better than a
-DCT, and JPEG's fixed overhead is not amortised over so few pixels. Lossy was the wrong
-default here, both for size and for fidelity.
+PNG**, and the measured PNG size is 4.2x below the low end of that assumption and 10.6x
+below the high end. At 128x96 the image is flat colour over large areas, which PNG's
+filtering plus DEFLATE handles far better than a DCT, and JPEG's fixed overhead is not
+amortised over so few pixels. Lossy was the wrong default here, both for size and for
+fidelity.
 
-Recomputing §4.4 with the measured PNG size and run A's throughput, keeping the roadmap's
-own 1.5x overhead factor:
+Projecting §4.4 forward from the measured PNG size and run A's throughput. **Only
+bytes/frame and frames/wall-second are measured; the columns below are those two numbers
+multiplied by a planned frame count, so they are projections, not measurements:**
 
-| stage | frames | §4.4 raw-GB figure | measured PNG | §4.4 time estimate | measured |
+| stage | frames | §4.4 raw-GB figure | projected PNG | §4.4 time estimate | projected from measured fps |
 |---|---:|---:|---:|---:|---:|
 | v0.1 thin slice | 8 000 | 0.295 GB | **0.011 GB** | 10-40 min | **5.8 min** |
 | v0.2 total | 200 000 | 7.373 GB | **0.284 GB** | 4.2-16.7 h | **2.42 h** |
 
-**These replace planning assumptions, not the measurement.** Two caveats, both material:
-the scene is a ground plane plus two untextured primitives, and richer scenes compress
-worse and render slower; and the 1.5x factor still covers planning, rejection and QA, which
-were not measured. The disk budget in §4.4 (20 GB for dataset and staging) is far larger
-than it needs to be at these sizes.
+Three caveats, all material:
+
+- The scene is a ground plane plus two untextured primitives. Richer scenes compress worse
+  and render slower, so both projected columns will grow.
+- The time column keeps §4.4's own 1.5x overhead factor, but §4.4 says that factor covers
+  reset, planning, rejection and encoding. **Reset and encoding are already inside the
+  measured throughput**, so applying 1.5x on top double-counts them. It is kept only as a
+  conservative margin for the planning and rejection costs, which were not measured. §4.4
+  excludes manual QA from the factor entirely, and that is still excluded here.
+- These replace planning assumptions. They are not a claim about a dataset that exists.
+
+The disk budget in §4.4 (20 GB for dataset and staging) is far larger than it needs to be
+at these sizes.
 
 ### What is actually in a frame
 
@@ -408,12 +427,23 @@ apply at this stage. `torch` is never imported by the profiler, which the report
 
 AC power, battery at 100 %, Windows power scheme `SAMSUNG MODE`, 16 logical CPUs visible to
 WSL, load average 0.73. **The desktop was busy**: the editor and browser were running, the
-host reported 23 % instant CPU load and only 432 MB free RAM. Every figure above is
-therefore a **lower bound on throughput and an upper bound on per-frame time**. That is the
-conservative direction for planning — the measured 34.5 frames/wall-second already beats
-§4.4's 5-20 assumption by 1.7-6.9x with a loaded machine. A quiet-machine repeat would
-refine it, not rescue it. Full host record in `reports/host_state.json`, collected by
-`scripts/host_state.ps1` (WSL cannot see AC state or the host power scheme).
+host reported 23 % instant CPU load and only 432 MB free RAM. These figures are therefore
+**likely conservative** — a loaded machine should give lower throughput and higher per-frame
+time than a quiet one, and the measured 34.5 frames/wall-second already beats §4.4's 5-20
+assumption by 1.7-6.9x.
+
+*Likely* conservative, not provably so: there was no quiet-machine run to compare against,
+and nothing pinned threads to P-cores or E-cores, which §7.4 item 3 explicitly warns about
+on this CPU. A quiet, affinity-controlled repeat could land either side of this.
+
+Full host record in `reports/host_state.json`, collected by `scripts/host_state.ps1` (WSL
+cannot see AC state or the host power scheme). The snapshot was taken 33 s, 64 s and 71 s
+before run A, run B and the shadow/segmentation run respectively — it describes those runs.
+`profile_env` now refuses to merge a host snapshot older than `--host-state-max-age-s`
+(default 900 s) and records `{"stale": true, "age_s": ...}` instead, so the committed
+snapshot can never be reported as the conditions of a later run or of a CI run on a Linux
+runner with no Windows host at all. The three reports above predate that guard, hence the
+timings quoted here rather than an `age_s_at_run` field inside them.
 
 CPU temperature is not exposed by this hardware through WMI, so thermal behaviour over a
 long generation run is unrecorded. §7.4's thread sweep (1/2/4/8) is not part of Phase 0.
@@ -434,13 +464,29 @@ back off disk, not against the loop that wrote them.
 ### Minimal CI
 
 `.github/workflows/ci.yml` runs `scripts/ci_smoke.sh` on push: the same camera, rates,
-encoder and verification as the full profile, at 10 frames. It completes locally in 0.72 s
-and the gate re-reads the report rather than trusting the exit code. The workflow skips
-torch entirely, since the profiler never imports it.
+encoder and verification as the full profile, at 10 frames. It completes locally in under a
+second and the gate re-reads the report rather than trusting the exit code.
 
-**It has never executed.** There is no git remote yet, so the YAML is unverified beyond
-being written against the documented actions. Treat the local `bash scripts/ci_smoke.sh`
-run as the only evidence so far.
+The workflow **derives both the simulator SHA and the package set from
+`env-lock-candidate.txt`** at run time instead of restating them. Hardcoding the SHA in the
+workflow would reintroduce exactly the second-copy-can-drift problem that argued against a
+submodule above. torch and `stable_baselines3` are filtered out of the install set, since
+the profiler never imports torch and torch is the heaviest dependency by far. The lock
+parsing was checked locally: the SHA it extracts matches `git rev-parse HEAD` in
+`third_party/`, and the filtered requirements still contain every distribution the profiler
+imports (numpy, pillow, pybullet, gymnasium, scipy, transforms3d, Farama-Notifications).
+
+CI also re-asserts one of the verification gates from the top of this file:
+`pybullet.isNumpyEnabled() == 1`. pybullet is built from source there (no cp312 wheel), and
+under pip's default build isolation numpy is not visible to that build, which would silently
+produce a pybullet whose `getCameraImage` returns Python lists — every render timing would
+then be measuring list conversion. numpy is installed first and pybullet is built with
+`--no-build-isolation` for that reason.
+
+**It has never executed.** There is no git remote yet, so the YAML is unverified beyond the
+lock parsing checked by hand and the gate script run locally. **`env-lock-candidate.txt`
+therefore stays a candidate, not a verified lock, until one clean CI run passes** — which is
+the condition roadmap v3 line 891 set in the first place.
 
 ### Still open
 
