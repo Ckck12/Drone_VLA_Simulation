@@ -93,6 +93,9 @@ jobs:
       - name: Phase 0 gate
         run: bash scripts/ci_smoke.sh
 
+      - name: Phase 1 tests (action contract, env API, one fixture per outcome)
+        run: python -m pytest tests -q -p no:cacheprovider
+
       - name: Keep the report
         if: always()
         uses: actions/upload-artifact@v4

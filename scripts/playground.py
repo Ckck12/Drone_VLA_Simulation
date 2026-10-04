@@ -53,7 +53,8 @@ CAMERA_HZ = 5            # 카메라 저장 주기 [Hz]. 60의 약수(1 2 3 4 5 
 # 컨트롤러는 아래 오차가 섞인 위치를 받습니다. 카메라는 진짜 위치에서 찍습니다.
 POSITION_NOISE_XY_M = 0.03  # 수평 위치 오차의 크기(표준편차) [m]. 0이면 완벽한 위치(정답지)
 POSITION_NOISE_Z_M = 0.01   # 수직 위치 오차 [m]. Mavic 스펙의 수평:수직 = 0.3:0.1 비율
-NOISE_CORRELATION_S = 1.0   # 오차가 얼마나 천천히 변하는지 [s]. 실제 추정 오차는 천천히 흘러다님
+NOISE_CORRELATION_S = 3.0   # 오차가 얼마나 천천히 흘러가는지 [s]. Phase 1 환경과 같은 값
+NOISE_SMOOTH_S = 0.3        # 추정기(EKF)처럼 오차를 부드럽게. 0이면 들쭉날쭉한 오차
 NOISE_SEED = 0              # 같은 값이면 같은 노이즈 -> 다른 설정끼리 공정하게 비교
 
 # --- 바람·기울기 제한 ----------------------------------------------------------
@@ -83,7 +84,7 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))     # scripts/ is not the package root
 
 from dronevla.camera import MOUNTS, FrontCamera                        # noqa: E402
-from dronevla.sim import TiltLimitedDSLPIDControl, WindyCtrlAviary      # noqa: E402
+from dronevla.sim import GaussMarkov, TiltLimitedDSLPIDControl, WindyCtrlAviary  # noqa: E402
 from gym_pybullet_drones.utils.enums import DroneModel, Physics        # noqa: E402
 from gym_pybullet_drones.utils.utils import sync                       # noqa: E402
 
@@ -120,6 +121,8 @@ def check_knobs():
         problems.append("POSITION_NOISE_*_M must be >= 0")
     if NOISE_CORRELATION_S <= 0:
         problems.append("NOISE_CORRELATION_S must be > 0")
+    if NOISE_SMOOTH_S < 0:
+        problems.append("NOISE_SMOOTH_S must be >= 0")
     if WIND_SPEED_MPS < 0 or WIND_GUST_MPS < 0:
         problems.append("WIND_SPEED_MPS and WIND_GUST_MPS must be >= 0")
     if MAX_TILT_DEG is not None and not 0 < MAX_TILT_DEG < 90:
@@ -177,31 +180,6 @@ class Route:
         a, b = self.pts[i], self.pts[i + 1]
         n = np.linalg.norm(b - a)
         return (b - a) / n if n > 0 else np.array([1.0, 0.0])
-
-
-# ------------------------------------------------- slowly wandering randomness
-class GaussMarkov:
-    """A first-order Gauss-Markov process per axis, used for two things here.
-
-    The value wanders slowly with time constant `tau_s`, and its long-run standard
-    deviation is exactly `sigma`.
-
-    * Position-estimate error: white noise at 60 Hz would be the wrong model -- real
-      position estimates (GNSS, visual odometry) are wrong in a *slowly drifting* way, which
-      is what makes a real drone wander while hovering instead of buzzing in place.
-    * Wind gusts: gusts rise and fall over seconds, not from one control step to the next.
-    """
-
-    def __init__(self, sigma_xyz, tau_s, dt, seed):
-        self.sigma = np.asarray(sigma_xyz, dtype=float)
-        self.a = math.exp(-dt / tau_s)
-        self.b = math.sqrt(1.0 - self.a ** 2)
-        self.rng = np.random.default_rng(seed)
-        self.e = self.rng.normal(size=3) * self.sigma    # start in the stationary state
-
-    def step(self):
-        self.e = self.a * self.e + self.b * self.sigma * self.rng.normal(size=3)
-        return self.e
 
 
 # ------------------------------------------------------------------- the scene
@@ -281,7 +259,7 @@ def main():
     cam = make_camera()
     noise = GaussMarkov(
         (POSITION_NOISE_XY_M, POSITION_NOISE_XY_M, POSITION_NOISE_Z_M),
-        NOISE_CORRELATION_S, 1.0 / CTRL_HZ, NOISE_SEED)
+        NOISE_CORRELATION_S, 1.0 / CTRL_HZ, NOISE_SEED, smooth_tau_s=NOISE_SMOOTH_S)
     gust = GaussMarkov((WIND_GUST_MPS, WIND_GUST_MPS, 0.0), GUST_CORRELATION_S,
                        1.0 / CTRL_HZ, NOISE_SEED + 1)
     toward = math.radians(WIND_TOWARD_DEG)
@@ -417,7 +395,8 @@ def report(log, objects, contacts, min_dist, route, run_dir, frames_dir, sky, ca
     if POSITION_NOISE_XY_M or POSITION_NOISE_Z_M:
         belief = np.linalg.norm(est - pos, axis=1)
         print(f"noise   : sigma xy {POSITION_NOISE_XY_M} m, z {POSITION_NOISE_Z_M} m, "
-              f"correlation {NOISE_CORRELATION_S} s -> the controller's belief was off by "
+              f"correlation {NOISE_CORRELATION_S} s, smoothing {NOISE_SMOOTH_S} s -> the "
+              f"controller's belief was off by "
               f"{belief.mean():.3f} m on average, {belief.max():.3f} m at worst")
     else:
         print("noise   : off -- the controller was given the exact true position")

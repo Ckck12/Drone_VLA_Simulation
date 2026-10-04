@@ -79,27 +79,47 @@ default 0.3 m/s the cap never engages (the controller asks for at most ~21°).
 
 ### Noise model and measurement
 
-A first-order Gauss-Markov process per axis, 1 s correlation time, so the error drifts
-slowly the way GNSS or visual-odometry error does, instead of buzzing at 60 Hz. The
-controller sees `truth + error`; the camera renders from the truth, because it is physically
-on the drone. The 3:1 horizontal-to-vertical ratio follows the Mavic spec. **The absolute
-size, 0.03 m, is a choice, not a derivation** -- roughly a third of the Crazyflie's ~9 cm
-span, picked to be visible in a 2 m arena.
+A first-order Gauss-Markov process per axis with a **3 s** correlation time, passed through
+a **0.3 s** first-order low-pass, so the error drifts slowly and smoothly the way an
+EKF-filtered GNSS or visual-odometry estimate does. The controller sees `truth + error`; the
+camera renders from the truth, because it is physically on the drone. The 3:1
+horizontal-to-vertical ratio follows the Mavic spec. **The absolute size, 0.03 m, is a
+choice, not a derivation** -- roughly a third of the Crazyflie's ~9 cm span, picked to be
+visible in a 2 m arena.
+
+**How the model got here (2026-10-05).** The first version used a 1 s correlation time and
+no smoothing. In the Phase 1 environment that made the oracle expert fail its Stop in 8 of 20
+episodes -- not by stopping in the wrong place, but because the drone kept moving faster than
+the 0.1 m/s settle limit while following its own drifting estimate. Unsmoothed, the error
+jumps ~3.7 mm per 60 Hz step (p50), which a PID chases as if it were motion. Measured with the
+expert over the same 20 episodes (10 seeds x both goals), smoothing 0.3 s in all but the first
+row:
+
+| noise model | expert success | max speed during the Stop hold |
+|---|---:|---:|
+| tau 1 s, no smoothing | 12 / 20 | 0.152 m/s |
+| tau 1 s | 18 / 20 | 0.138 m/s |
+| tau 2 s | 19 / 20 | 0.102 m/s |
+| **tau 3 s** | **20 / 20** | 0.087 m/s |
+| no noise at all | 20 / 20 | 0.059 m/s |
+
+Smoothing kept the standard deviation at 0.0297 m (target 0.03) while cutting the per-step
+jump from 3.67 mm to 0.62 mm (p50). The 3 s correlation time is a judgement -- real estimator
+drift is usually slower than 1 s -- and the failing settings are listed so that judgement
+can be checked.
 
 Gimbal camera, default route and objects, same seed. Hover = true position vs the final
-waypoint over the last 3.6 s, after a 1 s settle.
+waypoint, after a 1 s settle.
 
 | | tracking mean / max | hover horizontal max (p95) | hover vertical max (p95) |
 |---|---:|---:|---:|
-| no noise | 0.018 / 0.092 m | 0.006 m (0.006) | 0.004 m (0.004) |
-| **noise 0.03 / 0.01 m** | 0.053 / 0.146 m | 0.045 m (0.045) | 0.018 m (0.017) |
+| no noise, 3.6 s hover | 0.018 / 0.092 m | 0.006 m (0.006) | 0.004 m (0.004) |
+| **noise 0.03 / 0.01 m**, 3.6 s hover | 0.070 / 0.152 m | 0.056 m (0.056) | 0.014 m (0.014) |
+| **noise 0.03 / 0.01 m**, 23.6 s hover | 0.070 / 0.152 m | 0.057 m (0.053) | 0.022 m (0.018) |
 
 The drone drives what it *believes* its position is onto the target, so the true position
-misses by roughly the estimate error -- the controller's belief was off by 0.045 m on average.
-That is how a real drone ends up with a hover tolerance at all.
-
-Caveat: 3.6 s of hover with a 1 s correlation time is only a few independent samples. The
-hover figures are indicative; a 30 s+ hover (raise `DURATION_S`) would pin them down.
+misses by roughly the estimate error -- over the long run the controller's belief was off by
+0.041 m on average. That is how a real drone ends up with a hover tolerance at all.
 
 ### Wind model and measurement
 
@@ -109,9 +129,11 @@ velocity relative to the *ground*. `dronevla.sim.WindyCtrlAviary` changes exactl
 velocity relative to the *air* (`v_drone - v_wind`), applied every physics substep (240 Hz).
 Checked: with zero wind, its trajectory is bit-identical to the library's own `PYB_DRAG`
 physics; and with the cap off, `TiltLimitedDSLPIDControl` is bit-identical to
-`DSLPIDControl`. Gusts use the same Gauss-Markov process as the noise, 2 s correlation.
+`DSLPIDControl`. Gusts use the same Gauss-Markov process as the noise, 2 s correlation, no
+smoothing.
 
-Hovering at a single point for 20 s, no noise:
+Hovering at a single point for 20 s, no noise (noise was off, so the later change to the
+noise model does not affect these numbers):
 
 | wind | max lean | hover horizontal max (p95) over 17 s |
 |---|---:|---:|

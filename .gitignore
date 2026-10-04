@@ -19,3 +19,4 @@ results/env_profile*/
 results/**/frames/
 *.npy
 results/playground/
+results/try_env/

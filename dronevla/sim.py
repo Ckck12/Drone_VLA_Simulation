@@ -28,6 +28,47 @@ from gym_pybullet_drones.utils.enums import Physics
 _DRAG_PHYSICS = (Physics.PYB_DRAG, Physics.PYB_GND_DRAG_DW)
 
 
+class GaussMarkov:
+    """A first-order Gauss-Markov process per axis: slowly wandering randomness.
+
+    The value wanders with time constant `tau_s`, and its long-run standard deviation is
+    exactly `sigma`. Used for two things:
+
+    * Position-estimate error: white noise at 60 Hz would be the wrong model -- real
+      position estimates (GNSS, visual odometry) are wrong in a *slowly drifting* way, which
+      is what makes a real drone wander while hovering instead of buzzing in place.
+    * Wind gusts: gusts rise and fall over seconds, not from one control step to the next.
+
+    `seed` may be anything `np.random.default_rng` accepts, e.g. `[snapshot_seed, 1]`, so
+    independent streams can be derived from one episode seed.
+
+    `smooth_tau_s` > 0 passes the process through a first-order low-pass. A plain
+    Gauss-Markov process is continuous but jagged: at 60 Hz with sigma 0.03 m and tau 1 s it
+    jumps ~5 mm per step, which a PID chases as if it were motion. A real estimator (an EKF
+    fusing IMU with GNSS or vision) is smooth at that time scale. The input sigma is scaled
+    by sqrt((tau + smooth) / tau), the variance ratio of a Gauss-Markov process through a
+    first-order lag, so the output standard deviation stays `sigma`.
+    """
+
+    def __init__(self, sigma_xyz, tau_s, dt, seed, smooth_tau_s: float = 0.0):
+        self.sigma = np.asarray(sigma_xyz, dtype=float)
+        self.a = math.exp(-dt / tau_s)
+        self.b = math.sqrt(1.0 - self.a ** 2)
+        self.rng = np.random.default_rng(seed)
+        if smooth_tau_s > 0:
+            self.alpha = 1.0 - math.exp(-dt / smooth_tau_s)
+            self.sigma_in = self.sigma * math.sqrt((tau_s + smooth_tau_s) / tau_s)
+        else:
+            self.alpha, self.sigma_in = None, self.sigma
+        self.x = self.rng.normal(size=3) * self.sigma_in   # start in the stationary state
+        self.e = self.x.copy()
+
+    def step(self):
+        self.x = self.a * self.x + self.b * self.sigma_in * self.rng.normal(size=3)
+        self.e = self.x.copy() if self.alpha is None else self.e + self.alpha * (self.x - self.e)
+        return self.e
+
+
 class WindyCtrlAviary(CtrlAviary):
     """`CtrlAviary` whose rotor drag acts on airspeed. Set `wind_world` (m/s) any time."""
 
