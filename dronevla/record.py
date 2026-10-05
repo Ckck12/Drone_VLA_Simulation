@@ -1,6 +1,7 @@
 """Record a `DroneTargetPairs` dataset with the oracle expert.
 
     python -m dronevla.record --out data/v0.1                      # 20 / 10 / 10 pairs
+    python -m dronevla.record --out data/v0.2 --pairs 100 10 10 --version 0.2.0
     python -m dronevla.record --out /tmp/tiny --pairs 1 1 1        # a tiny one for tests
 
 Roadmap v3 Phase 1 item 3 and §4.4-4.5. What it does, in order, for each split:
@@ -44,6 +45,11 @@ from dronevla.task import INSTRUCTION_FAMILIES, TaskConfig, sample_layout
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 SPLIT_SEED_BASE = {"train": 1000, "val": 2000, "test": 3000}
 DATASET_VERSION = "0.1.0"
+VERSION_NOTES = {
+    "0.1.0": "first version.",
+    "0.2.0": "train grown from 20 to 100 pairs by continuing the train seed range; val and test "
+             "use the same seeds as v0.1, so the same layouts and expert flights."
+}
 
 
 def png_bytes(rgb) -> bytes:
@@ -179,7 +185,8 @@ def contingency(episodes, a, b):
     return "\n".join(lines)
 
 
-def write_datasheet(root, episodes, steps_by_episode, splits, rejected, cfg, gen_s, command):
+def write_datasheet(root, episodes, steps_by_episode, splits, rejected, cfg, gen_s, command,
+                    version=DATASET_VERSION):
     n_steps = np.array([e["n_steps"] for e in episodes])
     ep_t = np.array([e["episode_t"] for e in episodes])
     rgb_bytes = sum((root / r["rgb_path"]).stat().st_size
@@ -189,7 +196,7 @@ def write_datasheet(root, episodes, steps_by_episode, splits, rejected, cfg, gen
     split_lines = "\n".join(
         f"| {s} | {len(v['pair_ids'])} | {2 * len(v['pair_ids'])} | "
         f"{min(v['seeds'])}-{max(v['seeds'])} |" for s, v in splits.items() if v["seeds"])
-    text = f"""# Datasheet — DroneTargetPairs v{DATASET_VERSION}
+    text = f"""# Datasheet — DroneTargetPairs v{version}
 
 Generated {time.strftime('%Y-%m-%d')} by `{command}`. Every number below is computed from the
 recorded files.
@@ -283,15 +290,15 @@ dataset or pretrained weights.
 - targets are tall pillars chosen to stay visible from the hover point; the sky and floor
   are untextured
 - position-estimate noise is simulated (sigma 0.03 m horizontal); wind is off
-- 40 pairs is a thin slice: enough to wire training and evaluation, not to measure
-  generalisation
+- {len(episodes) // 2} pairs is a small dataset: val and test have only 10 layouts each, so
+  success rates carry wide intervals
 
 ## Regenerate
 `{command}` from the repository at the commit in `manifest.json`. Same seeds give the same
 layouts and, on the same machine, byte-identical images.
 
 ## Version
-v{DATASET_VERSION} — first version.
+v{version} — {VERSION_NOTES.get(version, "")}
 """
     (root / "datasheet.md").write_text(text)
 
@@ -302,6 +309,7 @@ def main(argv=None) -> int:
     ap.add_argument("--pairs", type=int, nargs=3, default=[20, 10, 10],
                     metavar=("TRAIN", "VAL", "TEST"))
     ap.add_argument("--force", action="store_true", help="overwrite an existing --out")
+    ap.add_argument("--version", default=DATASET_VERSION, choices=sorted(VERSION_NOTES))
     args = ap.parse_args(argv)
 
     root = args.out
@@ -313,7 +321,8 @@ def main(argv=None) -> int:
     root.mkdir(parents=True, exist_ok=True)
     cfg = TaskConfig()
     pairs = dict(zip(("train", "val", "test"), args.pairs))
-    command = "python -m dronevla.record --out <dir> --pairs " + " ".join(map(str, args.pairs))
+    command = ("python -m dronevla.record --out <dir> --pairs " + " ".join(map(str, args.pairs))
+               + ("" if args.version == DATASET_VERSION else f" --version {args.version}"))
     print(f"recording {sum(pairs.values())} pairs into {root}")
 
     episodes, steps, layouts, splits, rejected, gen_s = generate(root, pairs, cfg)
@@ -328,14 +337,14 @@ def main(argv=None) -> int:
     with (root / "rejected.jsonl").open("w") as fh:
         for r in rejected:
             fh.write(json.dumps(r) + "\n")
-    write_datasheet(root, episodes, steps, splits, rejected, cfg, gen_s, command)
+    write_datasheet(root, episodes, steps, splits, rejected, cfg, gen_s, command, args.version)
 
     from dronevla.camera import FrontCamera
     files = {str(p.relative_to(root)): sha256_file(p) for p in sorted(root.rglob("*"))
              if p.is_file() and p.parts[len(root.parts)] != "rgb"}
     images = [(r["rgb_path"], r["rgb_sha256"]) for rows in steps.values() for r in rows]
     manifest = {
-        "schema": SCHEMA_VERSION, "dataset_version": DATASET_VERSION,
+        "schema": SCHEMA_VERSION, "dataset_version": args.version,
         "created_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "command": command,
         "code": {"dronevla_version": __version__, **git_info(REPO_ROOT)},
