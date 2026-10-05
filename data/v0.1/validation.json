@@ -1,0 +1,75 @@
+{
+  "required_files": {
+    "pass": true,
+    "missing": []
+  },
+  "manifest_file_hashes": {
+    "pass": true,
+    "mismatched": [],
+    "files": 124
+  },
+  "schema_version": {
+    "pass": true,
+    "found": "dronevla.dataset/0.1"
+  },
+  "pairs_per_split": {
+    "pass": true,
+    "planned": {
+      "train": 20,
+      "val": 10,
+      "test": 10
+    },
+    "found": {
+      "train": 20,
+      "val": 10,
+      "test": 10
+    }
+  },
+  "episodes_are_two_per_pair": {
+    "pass": true,
+    "episodes": 80
+  },
+  "all_episodes_succeeded": {
+    "pass": true,
+    "outcomes": [
+      "success"
+    ]
+  },
+  "pairs_complete_and_identical_at_start": {
+    "pass": true,
+    "problems": [],
+    "pairs": 40
+  },
+  "splits_disjoint_by_layout_and_family": {
+    "pass": true,
+    "leaks": []
+  },
+  "splits_json_matches_episodes": {
+    "pass": true,
+    "listed": 40,
+    "episodes_pairs": 40
+  },
+  "instruction_names_the_goal": {
+    "pass": true,
+    "wrong": []
+  },
+  "steps_alignment_and_actions": {
+    "pass": true,
+    "problems": [],
+    "rows": 4101
+  },
+  "images_present_and_hashes_match": {
+    "pass": true,
+    "problems": [],
+    "images": 4101
+  },
+  "rgb_tree_hash_matches_manifest": {
+    "pass": true
+  },
+  "images_decode_to_96x128x3": {
+    "pass": true,
+    "found": [
+      "(96, 128, 3)"
+    ]
+  }
+}

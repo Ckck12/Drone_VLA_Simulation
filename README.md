@@ -20,7 +20,8 @@ Everything runs on a laptop CPU (no GPU) in PyBullet via
 | 0 — environment and measurement path | done: [`docs/phase0_env.md`](docs/phase0_env.md) |
 | realism pass against a real drone spec | done: [`docs/realism_mapping.md`](docs/realism_mapping.md) |
 | 1 — env, oracle expert, evaluator | done: [`docs/phase1_env.md`](docs/phase1_env.md) |
-| 1 — dataset v0.1, tiny policy, closed loop | next |
+| 1 — dataset v0.1 (40 counterfactual pairs) | done: [`docs/phase1_dataset.md`](docs/phase1_dataset.md) |
+| 1 — tiny policy, closed loop | next |
 | 1 — C++ core (C1) replacing `dronevla/action_adapter.py` | after that |
 
 Measured so far (details and caveats in the docs):

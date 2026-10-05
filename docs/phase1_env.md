@@ -111,7 +111,8 @@ Phase 1 layouts, not a dataset measurement.
 
 ## Next
 
-1. Dataset recorder v0.1 (§4.4-4.5): 80 episodes as 40 pairs, splits by layout, a manifest,
+1. *Done 2026-10-05, see `docs/phase1_dataset.md`.* Dataset recorder v0.1 (§4.4-4.5): 80
+   episodes as 40 pairs, splits by layout, a manifest,
    expert failures logged to a rejected manifest. Carry over from this step:
    - enforce `visibility_report()` at generation time; balance colours and left/right placement
    - stamp `time.monotonic()` per observation (the env deliberately does not)
