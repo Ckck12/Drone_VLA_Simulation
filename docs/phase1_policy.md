@@ -116,8 +116,16 @@ error on the *training* rows, by step:
 
 Longer training memorised every row the image can explain down to ~5 mm/s, and left t = 0
 where it was: about half the expert's 0.191 m/s instruction gap, which is what predicting the
-*average* of the two instructions' labels gives. Those 40 rows (2% of the data) are
-essentially all of the remaining training loss (estimated 0.0026 against a measured 0.002).
+*average* of the two instructions' labels gives. Measured exactly on the training rows with the
+training loss definitions: those 40 rows are 2% of the data but **36% of the remaining
+training loss** (0.0017 in total), with a per-row motion loss 32x that of the other rows. (A
+first version of this paragraph estimated them at "essentially all" of the remaining loss; the
+estimate had forgotten that the motion loss is averaged over four action dimensions.)
+
+The same measurement on the kept epoch-17 model shows something else: its training loss of
+0.100 is **94% Stop BCE** and only 6% motion, and the t = 0 rows are 0.9% of it. At the point
+where validation loss selected the model, the objective was almost entirely about *when to
+stop*; *where to go* -- the only part language could change -- barely registered.
 Swapping the instruction on the first frame moved the output 0.014 m/s (was 0.008); in closed
 loop the two instructions still led to different targets in only 2 of 20 training pairs; and
 the extra epochs overfit -- validation loss rose from 0.22 to 2.17 and test success fell to
