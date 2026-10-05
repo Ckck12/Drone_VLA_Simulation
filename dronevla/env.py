@@ -155,6 +155,7 @@ class DroneTargetPairsEnv(gymnasium.Env):
         settle_contact = self._contact
 
         self._t0 = av.step_counter / av.PYB_FREQ
+        self._first_pose = (self._state[0:3].copy(), self._state[3:7].copy())
         self._stop_count, self._outcome, self._hold = 0, None, None
         self._min_d = [np.inf, np.inf]
         self._update_distances()
@@ -371,14 +372,22 @@ class DroneTargetPairsEnv(gymnasium.Env):
         return [int((body == tid).sum()) for tid in self._target_ids]
 
     def visibility_report(self) -> dict:
-        """Target pixels at the start and from each hover point (level, start yaw).
+        """Target pixels in the first observation's pose, and from each hover point.
 
-        Call after reset(). Used to reject layouts whose goal would be invisible where the
-        policy has to decide to stop.
+        Used to reject layouts whose targets the policy could not see at the start, or whose
+        goal would be invisible where the policy has to decide to stop.
+
+        The start is rendered from the pose the drone actually had after the settle -- the
+        pose of the first observation -- and *not* from the nominal `layout.start_xyz`. The
+        drone's body is in the scene during these renders. Estimate noise leaves the real
+        drone a few cm off the nominal start, so a camera placed at the nominal start sat
+        inside the drone's own arm and propeller, which hid a target completely (seed 3006:
+        346 px in the real first frame, 0 px from the nominal pose). The hover points are
+        metres away from the drone, so the same problem cannot occur there.
         """
         lay = self._layout
         quat = p.getQuaternionFromEuler([0.0, 0.0, lay.start_yaw])
-        start_px = self._target_pixels(lay.start_xyz, quat)
+        start_px = self._target_pixels(*self._first_pose)
         hover_px = [self._target_pixels(h, quat) for h in lay.hover_points]
         return {"start_px": start_px,
                 "own_target_px_at_hover": [hover_px[i][i] for i in range(2)],

@@ -190,6 +190,15 @@ def test_both_targets_visible_at_start_and_goal_visible_at_hover(env, seed):
     assert min(vis["own_target_px_at_hover"]) > 0.2 * 128 * 96
 
 
+def test_start_visibility_is_measured_from_the_first_observation_pose(env):
+    """Regression: seed 3006 was rejected because the start render used the nominal start
+    position, a few cm from where the drone really hovered, which put the camera inside the
+    drone's own arm and hid a target (0 px) that the real first frame showed at 346 px."""
+    _, info = env.reset(seed=3006)
+    assert env.visibility_report()["start_px"] == info["privileged"]["first_frame_target_px"]
+    assert min(info["privileged"]["first_frame_target_px"]) > 100
+
+
 @pytest.mark.parametrize("seed", range(5))
 def test_expert_succeeds_on_both_members_of_a_pair(env, seed):
     expert = StraightLineExpert(CFG)
