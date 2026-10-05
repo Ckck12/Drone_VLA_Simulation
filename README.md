@@ -1,5 +1,7 @@
 # DroneVLA
 
+[![phase0-gate](https://github.com/Ckck12/Drone_VLA_Simulation/actions/workflows/ci.yml/badge.svg)](https://github.com/Ckck12/Drone_VLA_Simulation/actions/workflows/ci.yml)
+
 A small, CPU-only drone vision-language-action project: from the same start, the same
 camera image and the same state, the drone is told *"Go to the red box and stop."* or
 *"Go to the blue cylinder and stop."* -- and the question is whether it actually flies to a

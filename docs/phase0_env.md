@@ -1,7 +1,9 @@
 # Phase 0 — environment record
 
 - Recorded: 2026-10-04T21:06:58+09:00
-- Status: **lock candidate**, not a verified lock (roadmap v3 line 891).
+- Status: **verified lock** as of 2026-10-05 -- a clean CI run reproduced
+  `env-lock-candidate.txt` exactly (roadmap v3 line 891; see "Minimal CI" below). The file
+  keeps its original name so existing references stay valid.
 
 ## Pinned source
 
@@ -492,9 +494,12 @@ produce a pybullet whose `getCameraImage` returns Python lists — every render 
 then be measuring list conversion. numpy is installed first and pybullet is built with
 `--no-build-isolation` for that reason.
 
-**`env-lock-candidate.txt` stays a candidate, not a verified lock, until one clean CI run
-passes** — the condition roadmap v3 line 891 set in the first place. The repository is
-public at https://github.com/Ckck12/Drone_VLA_Simulation, so that run is now possible.
+**Verified 2026-10-05: CI run 37257954542 on commit `cd9bf3b` passed every step** on a clean
+`ubuntu-24.04` GitHub runner (https://github.com/Ckck12/Drone_VLA_Simulation/actions/runs/37257954542):
+pybullet compiled from source with `isNumpyEnabled() == 1`, `pip check` clean, the installed
+set identical to `env-lock-candidate.txt` (the step diffs them and fails on any difference),
+the Phase 0 gate passing, and the Phase 1 tests passing. That is the condition roadmap v3
+line 891 set for calling the lock verified, so it is no longer a candidate.
 
 ### Still open
 
