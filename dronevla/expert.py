@@ -43,7 +43,11 @@ class StraightLineExpert:
 
         v = self.gain * d
         speed = float(np.linalg.norm(v))
-        cap = self.cfg.limits.horizontal_mps
+        # A hair under the cap, not on it: an action exactly at 0.5 m/s comes back from the
+        # float32 round trip as 0.5000001, which the adapter then "caps" -- and the dataset's
+        # horizontal_capped flag and raw-vs-applied equality would both be wrong for 37% of
+        # the expert's steps (measured in the first v0.1 recording).
+        cap = self.cfg.limits.horizontal_mps * (1.0 - 1e-5)
         if speed > cap:
             v *= cap / speed
         vb = world_to_body_velocity([v[0], v[1], 0.0], priv["true_yaw"])

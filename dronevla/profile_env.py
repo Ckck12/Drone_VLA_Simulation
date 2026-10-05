@@ -95,7 +95,9 @@ def git_info(path: pathlib.Path) -> dict:
         except (OSError, subprocess.SubprocessError):
             return None
 
-    dirty = run("status", "--porcelain")
+    # tracked files only: a run's own untracked outputs (e.g. data/<version>/) must not make
+    # the code it ran from look modified
+    dirty = run("status", "--porcelain", "--untracked-files=no")
     return {
         "sha": run("rev-parse", "HEAD"),
         "dirty": None if dirty is None else bool(dirty),

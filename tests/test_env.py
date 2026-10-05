@@ -199,6 +199,21 @@ def test_start_visibility_is_measured_from_the_first_observation_pose(env):
     assert min(info["privileged"]["first_frame_target_px"]) > 100
 
 
+def test_expert_actions_are_applied_unchanged(env):
+    """The expert's action is the teacher label, so it must be exactly what was flown: no
+    cap may engage, and raw must equal applied. (A first version commanded exactly 0.5 m/s,
+    which float32 turned into 0.5000001 and the adapter capped on 37% of steps.)"""
+    expert = StraightLineExpert(CFG)
+    obs, info = env.reset(seed=1)
+    while True:
+        obs, _, term, trunc, info = env.step(expert.act(info))
+        a = info["action"]
+        assert not a["flags"]["horizontal_capped"]
+        assert a["applied"] == [float(v) for v in a["raw"][:4]] or a["raw"][4] > 0
+        if term or trunc:
+            break
+
+
 @pytest.mark.parametrize("seed", range(5))
 def test_expert_succeeds_on_both_members_of_a_pair(env, seed):
     expert = StraightLineExpert(CFG)
