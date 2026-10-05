@@ -470,11 +470,20 @@ second and the gate re-reads the report rather than trusting the exit code.
 The workflow **derives both the simulator SHA and the package set from
 `env-lock-candidate.txt`** at run time instead of restating them. Hardcoding the SHA in the
 workflow would reintroduce exactly the second-copy-can-drift problem that argued against a
-submodule above. torch and `stable_baselines3` are filtered out of the install set, since
-the profiler never imports torch and torch is the heaviest dependency by far. The lock
-parsing was checked locally: the SHA it extracts matches `git rev-parse HEAD` in
-`third_party/`, and the filtered requirements still contain every distribution the profiler
-imports (numpy, pillow, pybullet, gymnasium, scipy, transforms3d, Farama-Notifications).
+submodule above. The lock parsing was checked locally: the SHA it extracts matches
+`git rev-parse HEAD` in `third_party/`.
+
+**The first CI run failed, and why (2026-10-05).** The first version left torch and
+`stable_baselines3` out of the install set to save time, since the profiler never imports
+torch. Run 37257224196 failed in "Install dependencies". Reproduced from a fresh clone of the
+public repository in a new venv: `pip check` reports *gym-pybullet-drones 2.2.0 requires
+stable-baselines3 ... requires torch, which is not installed* -- the simulator declares both
+as dependencies, so a `--no-deps` editable install plus a filtered lock cannot pass. CI now
+installs the **whole** lock (torch from PyTorch's CPU index) and then diffs `pip freeze`
+against `env-lock-candidate.txt`. In the same fresh venv that gave: `pip check` clean,
+installed set identical to the lock, `isNumpyEnabled() == 1`, the gate passing and 51/51
+tests. One caveat: locally pip reused a pybullet wheel cached from the original build, so the
+source compile itself is first exercised on the CI runner.
 
 CI also re-asserts one of the verification gates from the top of this file:
 `pybullet.isNumpyEnabled() == 1`. pybullet is built from source there (no cp312 wheel), and
@@ -483,10 +492,9 @@ produce a pybullet whose `getCameraImage` returns Python lists — every render 
 then be measuring list conversion. numpy is installed first and pybullet is built with
 `--no-build-isolation` for that reason.
 
-**It has never executed.** There is no git remote yet, so the YAML is unverified beyond the
-lock parsing checked by hand and the gate script run locally. **`env-lock-candidate.txt`
-therefore stays a candidate, not a verified lock, until one clean CI run passes** — which is
-the condition roadmap v3 line 891 set in the first place.
+**`env-lock-candidate.txt` stays a candidate, not a verified lock, until one clean CI run
+passes** — the condition roadmap v3 line 891 set in the first place. The repository is
+public at https://github.com/Ckck12/Drone_VLA_Simulation, so that run is now possible.
 
 ### Still open
 

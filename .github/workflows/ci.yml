@@ -8,9 +8,10 @@ name: phase0-gate
 # precisely because a second copy of the SHA can drift from the lock; hardcoding it in this
 # file would make the same mistake.
 #
-# torch and stable_baselines3 are dropped from the install set: `dronevla.profile_env`
-# never imports torch -- its report records `torch_imported: false` -- and torch is by far
-# the heaviest dependency. Phase 1 adds a separate training job that needs it.
+# The whole lock is installed, torch included, and the installed set is diffed against it.
+# A first version left torch and stable_baselines3 out to save time; that failed `pip
+# check`, because gym-pybullet-drones declares both as dependencies. Installing the full
+# lock is also what it takes for env-lock-candidate.txt to stop being a candidate.
 
 on:
   push:
@@ -38,10 +39,9 @@ jobs:
                 env-lock-candidate.txt)
           test -n "$sha" || { echo "no pinned SHA in env-lock-candidate.txt"; exit 1; }
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
-          # Everything except the editable clone and the two training-only packages.
-          grep -v '^-e ' env-lock-candidate.txt \
-            | grep -v '^torch==' \
-            | grep -v '^stable_baselines3==' > ci-requirements.txt
+          # Everything except the editable clone (installed from third_party below) and
+          # torch (its +cpu build only exists on PyTorch's CPU index; installed separately).
+          grep -v '^-e ' env-lock-candidate.txt | grep -v '^torch==' > ci-requirements.txt
           echo "pinned simulator: $sha"
           echo "--- ci-requirements.txt ---"
           cat ci-requirements.txt
@@ -73,9 +73,15 @@ jobs:
           # for pybullet specifically.
           pip install "$(grep '^numpy==' env-lock-candidate.txt)"
           pip install --no-build-isolation "$(grep '^pybullet==' env-lock-candidate.txt)"
+          pip install "$(grep '^torch==' env-lock-candidate.txt)" \
+            --index-url https://download.pytorch.org/whl/cpu
           pip install -r ci-requirements.txt
           pip install --no-deps -e third_party/gym-pybullet-drones
           pip check
+          # the lock is only "verified" if a clean install reproduces it exactly
+          pip freeze --exclude-editable | sort > /tmp/installed.txt
+          grep -v '^-e ' env-lock-candidate.txt | sort > /tmp/lock.txt
+          diff /tmp/lock.txt /tmp/installed.txt && echo "installed set == env-lock-candidate.txt"
 
       - name: Verification gates from docs/phase0_env.md
         run: |

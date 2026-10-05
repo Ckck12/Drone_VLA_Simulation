@@ -55,15 +55,17 @@ python3.12 -m venv .venv && source .venv/bin/activate
 pip install --upgrade pip setuptools wheel
 pip install "$(grep '^numpy==' env-lock-candidate.txt)"            # before pybullet, see below
 pip install --no-build-isolation "$(grep '^pybullet==' env-lock-candidate.txt)"
-grep -v -e '^-e ' -e '^torch==' -e '^stable_baselines3==' env-lock-candidate.txt > /tmp/req.txt
+pip install "$(grep '^torch==' env-lock-candidate.txt)" --index-url https://download.pytorch.org/whl/cpu
+grep -v -e '^-e ' -e '^torch==' env-lock-candidate.txt > /tmp/req.txt
 pip install -r /tmp/req.txt
 pip install --no-deps -e third_party/gym-pybullet-drones
+pip check
 ```
 
 pybullet has no Python 3.12 wheel, so it compiles; numpy must be importable during that
-build or `getCameraImage` silently returns Python lists. torch is not needed for anything
-above (install the CPU build from `https://download.pytorch.org/whl/cpu` when training
-arrives).
+build or `getCameraImage` silently returns Python lists. torch is pinned to its CPU build,
+which lives only on PyTorch's own index -- the default PyPI torch pulls several GB of CUDA
+packages that are useless without an NVIDIA GPU.
 
 ## Try it
 
