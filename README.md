@@ -21,13 +21,17 @@ Everything runs on a laptop CPU (no GPU) in PyBullet via
 | realism pass against a real drone spec | done: [`docs/realism_mapping.md`](docs/realism_mapping.md) |
 | 1 — env, oracle expert, evaluator | done: [`docs/phase1_env.md`](docs/phase1_env.md) |
 | 1 — dataset v0.1 (40 counterfactual pairs) | done: [`docs/phase1_dataset.md`](docs/phase1_dataset.md) |
-| 1 — tiny policy, closed loop | next |
+| 1 — tiny RGB+text policy, closed loop | done, **does not ground yet**: [`docs/phase1_policy.md`](docs/phase1_policy.md) |
+| 1 — fix the language shortcut (counterfactual relabelling) | next |
 | 1 — C++ core (C1) replacing `dronevla/action_adapter.py` | after that |
 
 Measured so far (details and caveats in the docs):
 
 - 34-35 recorded 128x96 frames per wall-second on the CPU path, ~7x real time
 - the scripted oracle expert succeeds on 40/40 held-out episodes (20/20 counterfactual pairs)
+- a 481k-parameter RGB+text behaviour-cloning policy trains in ~3 min on CPU but **ignores the
+  instruction**: 0/10 test pairs, and swapping the words changes its first action 24x less
+  than the expert's -- diagnosed as an image shortcut, see the policy write-up
 - a gimbal camera's image is 25-31x steadier than the two ungimballed mounts tried
   (standard deviation of the sky's share of the frame)
 

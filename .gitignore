@@ -21,6 +21,7 @@ results/**/frames/
 results/playground/
 results/try_env/
 results/inspect/
+runs/
 
 # --- private, never published -------------------------------------------------------
 # personal planning constraints; removed from history before the first push
