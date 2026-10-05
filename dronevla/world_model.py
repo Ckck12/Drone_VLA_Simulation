@@ -2,6 +2,7 @@
 
     python -m dronevla.world_model train --out runs/wm_v0
     python -m dronevla.world_model eval  --run runs/wm_v0 --out reports/wm_v0_prediction.json
+    python -m dronevla.world_model train --data data/v0.2 --explore data/explore_v0.2 --out runs/wm_v1
 
 What it is: an encoder from (RGB, proprio) to a 64-d latent z, a residual dynamics model
 z_{t+1} = LN(z_t + f(z_t, a_t)) driven by the horizontal command a_t = (vx, vy), and two
@@ -196,18 +197,24 @@ def losses(model, norm, batch, horizon, gamma=0.9):
 
 
 # ------------------------------------------------------------------------- training
-def default_sources(split):
-    demo = REPO_ROOT / "data/v0.1"
-    explore = REPO_ROOT / "data/explore_v0.1" / split
-    return [(demo, split), (explore, None)]
+def default_sources(split, data="data/v0.1", explore="data/explore_v0.1"):
+    """Demonstrations of `split` plus the exploration flights over the same split's layouts."""
+    return [(REPO_ROOT / data, split), (REPO_ROOT / explore / split, None)]
+
+
+def val_sets(cfg):
+    """The evaluation sets for a trained run: val demonstrations and val exploration."""
+    d = cfg.get("data", {"demos": "data/v0.1", "explore": "data/explore_v0.1"})
+    return (("val expert demos", [(REPO_ROOT / d["demos"], "val")]),
+            ("val exploration", [(REPO_ROOT / d["explore"] / "val", None)]))
 
 
 def train(args):
     torch.manual_seed(args.seed)
     rng = np.random.default_rng(args.seed)
     t0 = time.perf_counter()
-    tr = load_sources(default_sources("train"))
-    va = load_sources(default_sources("val"))
+    tr = load_sources(default_sources("train", args.data, args.explore))
+    va = load_sources(default_sources("val", args.data, args.explore))
     print(f"loaded {sum(len(e['prop']) for e in tr)} train rows ({len(tr)} episodes), "
           f"{sum(len(e['prop']) for e in va)} val rows ({len(va)} episodes) "
           f"in {time.perf_counter() - t0:.0f} s")
@@ -263,6 +270,7 @@ def train(args):
            "colour_order": list(COLOUR_ORDER), "train_s": time.perf_counter() - t_train,
            "step_ms": stats(step_times[5:]), "selection": "last epoch (fixed count)",
            "train_rows": int(sum(len(e["prop"]) for e in tr)),
+           "train_episodes": len(tr), "data": {"demos": args.data, "explore": args.explore},
            "code": git_info(REPO_ROOT)}
     (args.out / "config.json").write_text(json.dumps(cfg, indent=2) + "\n")
     print(f"trained {cfg['train_s']:.0f} s; wrote {args.out}")
@@ -283,8 +291,7 @@ def evaluate(args):
     model, norm, cfg = load_model(args.run)
     H = args.horizon
     report = {"run": str(args.run), "horizon": H, "sets": {}}
-    for name, sources in (("val expert demos", [(REPO_ROOT / "data/v0.1", "val")]),
-                          ("val exploration", [(REPO_ROOT / "data/explore_v0.1/val", None)])):
+    for name, sources in val_sets(cfg):
         eps = load_sources(sources)
         win = windows(eps, H, stride=2)
         err = {m: [[] for _ in range(H + 1)] for m in ("wm", "hold", "const_vel", "cmd_int")}
@@ -340,6 +347,8 @@ def main(argv=None) -> int:
     t.add_argument("--lr", type=float, default=1e-3)
     t.add_argument("--z-dim", type=int, default=64)
     t.add_argument("--seed", type=int, default=0)
+    t.add_argument("--data", default="data/v0.1", help="demonstration dataset, relative to the repo")
+    t.add_argument("--explore", default="data/explore_v0.1", help="exploration root with train/ and val/")
     e = sub.add_parser("eval")
     e.add_argument("--run", type=pathlib.Path, required=True)
     e.add_argument("--horizon", type=int, default=10)

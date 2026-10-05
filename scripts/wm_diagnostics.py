@@ -23,7 +23,8 @@ import torch
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 from dronevla.world_model import (COLOUR_ORDER, DT, OFFSET_SCALE, REPO_ROOT,  # noqa: E402
-                                  batch_tensors, episode_list, load_model, load_sources, windows)
+                                  batch_tensors, episode_list, load_model, load_sources, val_sets,
+                                  windows)
 
 HFOV_HALF = math.atan(math.tan(math.radians(47 / 2)) * 128 / 96)       # ~30.1 deg
 DIST_BINS = ((0.0, 0.5), (0.5, 1.0), (1.0, 2.0), (2.0, math.inf))
@@ -52,13 +53,12 @@ def main():
     H = args.horizon
     out = {"run": args.run.name, "hfov_half_deg": round(math.degrees(HFOV_HALF), 2)}
 
-    demo_root = REPO_ROOT / "data/v0.1"
+    sets = {name: load_sources(src) for name, src in val_sets(cfg)}
+    demo_root = val_sets(cfg)[0][1][0][0]
     goal_colour = {}
     for e in episode_list(demo_root, "val"):
         lay = json.loads((demo_root / "layouts" / f"{e['layout_id']}.json").read_text())
         goal_colour[e["episode_id"]] = COLOUR_ORDER.index(lay["targets"][e["goal_index"]]["color"])
-    sets = {"val expert demos": load_sources([(demo_root, "val")]),
-            "val exploration": load_sources([(REPO_ROOT / "data/explore_v0.1/val", None)])}
     sets["val random_walk only"] = [e for e in sets["val exploration"] if "random_walk" in e["episode_id"]]
 
     for name, eps in sets.items():
