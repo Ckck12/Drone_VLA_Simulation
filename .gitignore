@@ -20,3 +20,7 @@ results/**/frames/
 *.npy
 results/playground/
 results/try_env/
+
+# --- private, never published -------------------------------------------------------
+# personal planning constraints; removed from history before the first push
+robotics_project/CONSTRAINTS.md
