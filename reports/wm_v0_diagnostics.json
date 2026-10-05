@@ -1,0 +1,162 @@
+{
+  "run": "wm_v0",
+  "hfov_half_deg": 30.1,
+  "val expert demos": {
+    "windows": 419,
+    "k0_offset_error_m": {
+      "in_view": 0.46513018012046814,
+      "out_of_view": 1.1414992809295654,
+      "n_in_view": 647,
+      "n_out_of_view": 191
+    },
+    "offset_error_m_from_wm_k0": {
+      "1": {
+        "wm_rollout": 0.5572569072246552,
+        "cmd_int_from_wm_k0": 0.562246710062027
+      },
+      "5": {
+        "wm_rollout": 0.5862088203430176,
+        "cmd_int_from_wm_k0": 0.5723312795162201
+      },
+      "10": {
+        "wm_rollout": 0.63164022564888,
+        "cmd_int_from_wm_k0": 0.5678697526454926
+      }
+    },
+    "instructed_target_k0_error_all_m": 0.41005873680114746,
+    "instructed_target_k0_error_by_true_distance": {
+      "0.0-0.5 m": {
+        "n": 31,
+        "median_error_m": 0.32420578598976135,
+        "frac_error_below_0.4m": 0.5483870967741935
+      },
+      "0.5-1.0 m": {
+        "n": 48,
+        "median_error_m": 0.3172200322151184,
+        "frac_error_below_0.4m": 0.6875
+      },
+      "1.0-2.0 m": {
+        "n": 99,
+        "median_error_m": 0.33737048506736755,
+        "frac_error_below_0.4m": 0.5959595959595959
+      },
+      "2.0-inf m": {
+        "n": 241,
+        "median_error_m": 0.5199494361877441,
+        "frac_error_below_0.4m": 0.3900414937759336
+      }
+    }
+  },
+  "val exploration": {
+    "windows": 420,
+    "k0_offset_error_m": {
+      "in_view": 0.5448593497276306,
+      "out_of_view": 1.0259169340133667,
+      "n_in_view": 770,
+      "n_out_of_view": 70
+    },
+    "offset_error_m_from_wm_k0": {
+      "1": {
+        "wm_rollout": 0.5574727356433868,
+        "cmd_int_from_wm_k0": 0.5549435615539551
+      },
+      "5": {
+        "wm_rollout": 0.5813197195529938,
+        "cmd_int_from_wm_k0": 0.5589856505393982
+      },
+      "10": {
+        "wm_rollout": 0.6294224262237549,
+        "cmd_int_from_wm_k0": 0.567468672990799
+      }
+    }
+  },
+  "val random_walk only": {
+    "windows": 210,
+    "k0_offset_error_m": {
+      "in_view": 0.5995864868164062,
+      "out_of_view": 0.7818100452423096,
+      "n_in_view": 401,
+      "n_out_of_view": 19
+    },
+    "offset_error_m_from_wm_k0": {
+      "1": {
+        "wm_rollout": 0.5925214290618896,
+        "cmd_int_from_wm_k0": 0.6172581017017365
+      },
+      "5": {
+        "wm_rollout": 0.6359042227268219,
+        "cmd_int_from_wm_k0": 0.6059628129005432
+      },
+      "10": {
+        "wm_rollout": 0.6831954717636108,
+        "cmd_int_from_wm_k0": 0.6146621704101562
+      }
+    }
+  },
+  "action_probe": {
+    "states": 519,
+    "note": "slope 1.0 = offset moves exactly as commanded",
+    "results": {
+      "k1 +x": {
+        "slope": -0.5776059627532959,
+        "expected_shift_m": 0.10000000149011612,
+        "cross_axis_abs_m": 0.06932038068771362
+      },
+      "k1 -x": {
+        "slope": -1.0167694091796875,
+        "expected_shift_m": 0.10000000149011612,
+        "cross_axis_abs_m": 0.09996920824050903
+      },
+      "k1 +y": {
+        "slope": 0.8516371250152588,
+        "expected_shift_m": 0.10000000149011612,
+        "cross_axis_abs_m": 0.13419324159622192
+      },
+      "k1 -y": {
+        "slope": 0.7395347952842712,
+        "expected_shift_m": 0.10000000149011612,
+        "cross_axis_abs_m": 0.10938382148742676
+      },
+      "k3 +x": {
+        "slope": 0.6937730312347412,
+        "expected_shift_m": 0.30000001192092896,
+        "cross_axis_abs_m": 0.11038780212402344
+      },
+      "k3 -x": {
+        "slope": 1.0882186889648438,
+        "expected_shift_m": 0.30000001192092896,
+        "cross_axis_abs_m": 0.13006527721881866
+      },
+      "k3 +y": {
+        "slope": 0.9308688640594482,
+        "expected_shift_m": 0.30000001192092896,
+        "cross_axis_abs_m": 0.15571486949920654
+      },
+      "k3 -y": {
+        "slope": 0.5446094870567322,
+        "expected_shift_m": 0.30000001192092896,
+        "cross_axis_abs_m": 0.17777252197265625
+      },
+      "k5 +x": {
+        "slope": 0.7879734039306641,
+        "expected_shift_m": 0.5,
+        "cross_axis_abs_m": 0.14039874076843262
+      },
+      "k5 -x": {
+        "slope": 1.3973524570465088,
+        "expected_shift_m": 0.5,
+        "cross_axis_abs_m": 0.1709551215171814
+      },
+      "k5 +y": {
+        "slope": 0.883721649646759,
+        "expected_shift_m": 0.5,
+        "cross_axis_abs_m": 0.2275838851928711
+      },
+      "k5 -y": {
+        "slope": 0.653678834438324,
+        "expected_shift_m": 0.5,
+        "cross_axis_abs_m": 0.29555487632751465
+      }
+    }
+  }
+}
