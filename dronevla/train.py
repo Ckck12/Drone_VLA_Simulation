@@ -140,6 +140,9 @@ def main(argv=None) -> int:
     ap.add_argument("--batch", type=int, default=16)          # Phase 1 item 5 start value
     ap.add_argument("--lr", type=float, default=1e-3)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--select", choices=["best_val", "last"], default="best_val",
+                    help="keep the epoch with the lowest validation loss (default) or the last "
+                         "one -- 'last' tests whether early selection stopped training too soon")
     args = ap.parse_args(argv)
 
     torch.manual_seed(args.seed)
@@ -226,7 +229,7 @@ def main(argv=None) -> int:
                "val_motion_huber": v["motion_huber"], "val_stop_bce": v["stop_bce"],
                "val_horizontal_rmse_mps": v["horizontal_rmse_mps"]}
         log.append(row)
-        if val_loss < best[0]:
+        if val_loss < best[0] or (args.select == "last" and epoch == args.epochs - 1):
             best = (val_loss, {k: t.clone() for k, t in model.state_dict().items()}, epoch)
         if epoch % 5 == 0 or epoch == args.epochs - 1:
             print(f"  epoch {epoch:3d}  train {row['train_loss']:.4f}  val {val_loss:.4f}  "

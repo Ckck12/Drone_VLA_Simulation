@@ -102,6 +102,28 @@ read the goal off the image and leave the text pathway nearly unused. In closed 
 decision is then made without the instruction, and every following frame confirms whichever
 way the drone happened to lean.
 
+**4. Was it simply undertrained?** The kept model is epoch 17 of 40, chosen by validation
+loss, so it might have stopped before learning to use the words. Tested by training 150
+epochs and keeping the last one (`--select last`, `runs/bc_text_long`, 738 s). Lateral-command
+error on the *training* rows, by step:
+
+| step | epoch 17 (kept) | epoch 150 |
+|---|---:|---:|
+| **t = 0** -- identical frame for both instructions; only the words decide | 0.090 m/s | **0.084 m/s** |
+| t = 1-4 | 0.014 | 0.006 |
+| t = 5-9 | 0.020 | 0.004 |
+| t >= 10 | 0.014 | 0.005 |
+
+Longer training memorised every row the image can explain down to ~5 mm/s, and left t = 0
+where it was: about half the expert's 0.191 m/s instruction gap, which is what predicting the
+*average* of the two instructions' labels gives. Those 40 rows (2% of the data) are
+essentially all of the remaining training loss (estimated 0.0026 against a measured 0.002).
+Swapping the instruction on the first frame moved the output 0.014 m/s (was 0.008); in closed
+loop the two instructions still led to different targets in only 2 of 20 training pairs; and
+the extra epochs overfit -- validation loss rose from 0.22 to 2.17 and test success fell to
+5/20. So it is not a matter of training longer. The rows that need language are too few for
+the loss to care about once the image explains the rest.
+
 This is the failure the project's counterfactual pairs were meant to expose, and it shows up
 in the first experiment. It also means the higher text-policy success rate (8/20 vs 4/20 on
 test) should not be read as a language effect: the intervals overlap and the pair metric is
