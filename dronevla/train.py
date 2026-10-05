@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import pathlib
 import resource
 import sys
@@ -39,7 +40,7 @@ PROPRIO_STD_FLOOR = 1e-2   # features that barely vary on train (e.g. sin yaw at
 
 def load_rows(root, episodes):
     """Every action row of the given episodes, images decoded into memory."""
-    rgb, proprio, action, stop, instr, eid = [], [], [], [], [], []
+    rgb, proprio, action, stop, instr, eid, tpos = [], [], [], [], [], [], []
     for e in episodes:
         for r in load_steps(root, e["episode_id"]):
             if not r["action_mask"]:
@@ -50,11 +51,77 @@ def load_rows(root, episodes):
             stop.append(1.0 if r["stop_positive"] else 0.0)
             instr.append(e["instruction"])
             eid.append(e["episode_id"])
+            tpos.append(r["priv_true_pos"])
     return {"rgb": torch.from_numpy(np.stack(rgb)),
             "proprio": torch.tensor(proprio, dtype=torch.float32),
             "action": torch.tensor(action, dtype=torch.float32),
             "stop": torch.tensor(stop, dtype=torch.float32),
-            "instr": instr, "episode_id": eid}
+            "instr": instr, "episode_id": eid,
+            "priv_true_pos": np.asarray(tpos, dtype=np.float64)}
+
+
+def expert_label(expert, true_pos, proprio, goal_hover_point):
+    """What the oracle expert would command from a recorded state toward a given goal.
+
+    The expert needs the true position (logged as `priv_true_pos`), the world-frame velocity
+    and yaw. The velocity is rebuilt from the observation itself: body-frame velocity rotated
+    by roll, pitch and yaw (PyBullet's convention, R = Rz(yaw) Ry(pitch) Rx(roll)).
+    """
+    from scipy.spatial.transform import Rotation
+    p = np.asarray(proprio, dtype=np.float64)
+    yaw = math.atan2(p[5], p[6])
+    v_world = Rotation.from_euler("xyz", [p[3], p[4], yaw]).apply(p[0:3])
+    a = expert.act({"privileged": {"true_pos": list(true_pos), "true_vel": list(v_world),
+                                   "true_yaw": yaw, "goal_hover_point": list(goal_hover_point)}})
+    return a[:4].astype(np.float32), float(a[4] > 0)
+
+
+def counterfactual_relabel(root, episodes, data, cfg):
+    """Counterfactual relabelling (docs/phase1_policy.md, "What to try next" 1).
+
+    For every recorded state, add a sample with the *other* target's instruction and the
+    action the oracle expert would take from that state toward the *other* goal. The same
+    image then carries two different labels depending on the words, at every step rather than
+    only at t = 0, so the image alone can no longer explain the label.
+
+    Returns (augmented rows, consistency report). The report recomputes the label toward the
+    episode's *own* goal and compares it with the recorded action: if that does not match, the
+    state reconstruction is wrong and so would be every counterfactual label.
+    """
+    from dronevla.expert import StraightLineExpert
+    from dronevla.task import Target, make_instruction
+    expert = StraightLineExpert(cfg)
+    lay = {e["episode_id"]: json.loads((root / "layouts" / f"{e['layout_id']}.json").read_text())
+           for e in episodes}
+    meta = {e["episode_id"]: e for e in episodes}
+    cf_action, cf_stop, cf_instr = [], [], []
+    own_err, own_stop_agree = [], []
+    for i, eid in enumerate(data["episode_id"]):
+        e, L = meta[eid], lay[eid]
+        g = e["goal_index"]
+        state = (data["priv_true_pos"][i], data["proprio"][i].numpy())
+        a_own, s_own = expert_label(expert, *state, L["hover_points"][g])
+        own_err.append(float(np.abs(a_own[:2] - data["action"][i, :2].numpy()).max()))
+        own_stop_agree.append(s_own == float(data["stop"][i]))
+        a_cf, s_cf = expert_label(expert, *state, L["hover_points"][1 - g])
+        cf_action.append(a_cf)
+        cf_stop.append(s_cf)
+        other = Target(**L["targets"][1 - g])
+        cf_instr.append(make_instruction(other, e["instruction_family"]))
+    report = {"own_goal_max_abs_error_mps": {"median": float(np.median(own_err)),
+                                             "p99": float(np.percentile(own_err, 99)),
+                                             "max": float(np.max(own_err))},
+              "own_goal_stop_agreement": float(np.mean(own_stop_agree)),
+              "counterfactual_rows": len(cf_action),
+              "counterfactual_stop_positives": int(sum(cf_stop))}
+    aug = {"rgb": torch.cat([data["rgb"], data["rgb"]]),
+           "proprio": torch.cat([data["proprio"], data["proprio"]]),
+           "action": torch.cat([data["action"], torch.tensor(np.stack(cf_action))]),
+           "stop": torch.cat([data["stop"], torch.tensor(cf_stop, dtype=torch.float32)]),
+           "instr": data["instr"] + cf_instr,
+           "episode_id": data["episode_id"] + [f"{x}#cf" for x in data["episode_id"]],
+           "priv_true_pos": np.concatenate([data["priv_true_pos"], data["priv_true_pos"]])}
+    return aug, report
 
 
 class Prepared:
@@ -140,6 +207,11 @@ def main(argv=None) -> int:
     ap.add_argument("--batch", type=int, default=16)          # Phase 1 item 5 start value
     ap.add_argument("--lr", type=float, default=1e-3)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--film", action="store_true",
+                    help="FiLM-condition the CNN on the instruction (see dronevla/model.py)")
+    ap.add_argument("--counterfactual", action="store_true",
+                    help="add a counterfactual-relabelled copy of every training state; the "
+                         "Stop pos_weight and proprio statistics stay those of the original rows")
     ap.add_argument("--select", choices=["best_val", "last"], default="best_val",
                     help="keep the epoch with the lowest validation loss (default) or the last "
                          "one -- 'last' tests whether early selection stopped training too soon")
@@ -166,10 +238,23 @@ def main(argv=None) -> int:
     train, val = load_rows(root, train_eps), load_rows(root, val_eps)
     load_s = time.perf_counter() - t_load
     prep = Prepared(train, caps, args.no_language)
-    model = TinyBC(len(prep.vocab))
+    model_kwargs = {"film": args.film}
+    model = TinyBC(len(prep.vocab), **model_kwargs)
     n_params = count_parameters(model)
     pos = float(train["stop"].sum())
-    pos_weight = (len(train["stop"]) - pos) / max(pos, 1.0)
+    pos_weight = (len(train["stop"]) - pos) / max(pos, 1.0)   # from the original rows only
+    cf_report = None
+    if args.counterfactual:
+        from dronevla.action_adapter import ActionLimits
+        from dronevla.task import TaskConfig
+        task_cfg = TaskConfig(**{k: (tuple(v) if isinstance(v, list) else v)
+                                 for k, v in cfg.items() if k != "limits"},
+                              limits=ActionLimits(**cfg["limits"]))
+        train, cf_report = counterfactual_relabel(root, train_eps, train, task_cfg)
+        unseen = sorted({w for t in train["instr"] for w in t.lower().replace(",", " ")
+                         .replace(".", " ").split()} - set(prep.vocab.itos))
+        assert not unseen, f"counterfactual instructions use words outside the vocabulary: {unseen}"
+        print(f"counterfactual relabelling: {cf_report}")
     huber = nn.SmoothL1Loss(beta=0.1)
     bce = nn.BCEWithLogitsLoss(pos_weight=torch.tensor(pos_weight))
     opt = torch.optim.Adam(model.parameters(), lr=args.lr)
@@ -245,6 +330,7 @@ def main(argv=None) -> int:
             fh.write(json.dumps(row) + "\n")
     config = {
         "schema": "dronevla.policy/0.1", "model": "TinyBC", "parameters": n_params,
+        "model_kwargs": model_kwargs,
         "prep": prep.to_json(), "stop_threshold": th,
         "stop_threshold_val": {"f1": f1, **pr},
         "best_epoch": best[2], "best_val_loss": best[0],
@@ -254,6 +340,7 @@ def main(argv=None) -> int:
                   "pos_weight": pos_weight, "train_rows": n, "val_rows": len(val["stop"]),
                   "train_episodes": [e["episode_id"] for e in train_eps],
                   "overfit_pair": args.overfit_pair, "train_s": train_s,
+                  "counterfactual": cf_report, "select": args.select,
                   "torch_threads": torch.get_num_threads(), "torch": torch.__version__},
         "data": {"root": str(root), "dataset_version": manifest["dataset_version"],
                  "manifest_sha256": sha256_file(root / "manifest.json"),

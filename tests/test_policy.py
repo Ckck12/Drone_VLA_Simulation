@@ -8,7 +8,7 @@ import torch
 
 from dronevla import evaluate, record, train
 from dronevla.evaluate import LearnedPolicy
-from dronevla.model import MAX_TOKENS, TinyBC, Vocab, count_parameters
+from dronevla.model import MAX_TOKENS, TinyBC, Vocab, count_parameters, upgrade_state_dict
 from dronevla.train import best_threshold
 
 
@@ -32,6 +32,23 @@ def test_model_fits_the_roadmap_budget_and_shapes():
                       m.encode_text(torch.tensor([[2, 3, 0], [4, 0, 0], [1, 1, 1]])))
     assert motion.shape == (3, 4) and logit.shape == (3,)
     assert motion.abs().max() <= 1.0                               # tanh, then scaled by caps
+
+
+def test_film_starts_as_exactly_the_unconditioned_network():
+    torch.manual_seed(0)
+    plain = TinyBC(vocab_size=20)
+    film = TinyBC(vocab_size=20, film=True)
+    film.load_state_dict(plain.state_dict(), strict=False)      # everything but the FiLM layer
+    rgb = torch.randint(0, 255, (2, 96, 128, 3), dtype=torch.uint8)
+    prop, ids = torch.randn(2, 11), torch.tensor([[2, 3], [4, 5]])
+    a = plain(rgb, prop, plain.encode_text(ids))
+    b = film(rgb, prop, film.encode_text(ids))
+    assert torch.equal(a[0], b[0]) and torch.equal(a[1], b[1])
+
+
+def test_pre_film_checkpoints_still_load():
+    old = {"cnn.0.weight": 1, "cnn.6.bias": 2, "head.0.weight": 3}
+    assert upgrade_state_dict(old) == {"convs.0.weight": 1, "convs.3.bias": 2, "head.0.weight": 3}
 
 
 def test_stop_threshold_sits_in_the_middle_of_the_gap():

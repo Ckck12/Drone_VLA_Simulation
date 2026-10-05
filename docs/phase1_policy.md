@@ -163,6 +163,58 @@ Ordered by how directly each one attacks the diagnosed cause:
 
 Each would be judged by the same closed-loop pair metric on the same test pairs.
 
+## Experiments on the shortcut (2026-10-05) -- and what was wrong with how they were run
+
+### Experiment 1: counterfactual relabelling (data only)
+
+`--counterfactual`: every training state also gets the *other* instruction and the oracle
+expert's action toward the *other* goal, recomputed from the logged true position and the
+velocity rebuilt from the observation. Model, loss, Stop pos_weight (13.9, from the original
+rows) and selection rule unchanged. Check first: recomputing toward the episode's *own* goal
+reproduced every recorded action (max error 7e-9 m/s, Stop agreement 100%), so the
+reconstruction is exact. 1.5% of the counterfactual labels (30 of 2015) point along a straight
+line that passes within 0.35 m of a target -- small, not zero.
+
+It **did make the policy use the words**: first-frame lateral gap when only the instruction
+changes rose from 0.008 to 0.073 m/s on train pairs (expert 0.191); in closed loop on val the
+two instructions led to different targets in 5 of 10 pairs (closest-approach scoring), against
+2 of 10 for the baseline. It **broke the flying**: val success 7/20 -> 0/20, mostly out of
+bounds and collisions. Mechanism, measured on val rows: within 0.3 m of the goal the expert
+flies at a median 0.105 m/s, the baseline 0.053, the relabelled policy **0.210** -- the same
+image now carries "stop here" and "full speed to the other one", and a policy that separates
+them only partly by the words outputs something in between.
+
+### Experiment 2: + FiLM (architecture), inconclusive
+
+`--film`: the instruction scales and shifts every conv layer's channels (zero-initialised, so
+it starts as exactly the plain network -- tested; 492,517 parameters). Near-goal speed came
+back to 0.113 m/s (expert 0.105), and val pairs with different targets were 6 of 10. Val
+success stayed 0/20, with 8 stops in the wrong place. **But validation loss selected epoch 5**,
+so this model was barely trained, and the comparison with Experiment 1 (epoch 15) and the
+baseline (epoch 17) says little.
+
+### Problems with the protocol, stated plainly
+
+1. **Test was used for decisions.** Every iteration was scored on the 10 test pairs and the
+   next step followed from it. With 10 pairs that is a real leak. From here, test is frozen;
+   decisions use val, and if 10 val pairs are too noisy, a separate dev split from a fresh seed
+   range (4000+). The test numbers in this file stay as recorded, with that caveat.
+2. **Single seeds.** A 480k-parameter model on 20 training pairs; seed variance is probably as
+   large as the 2-vs-5-vs-6 differences above. Each configuration needs at least three seeds,
+   reported as mean and range.
+3. **The selection rule favours early epochs.** Validation loss is dominated by Stop BCE, so it
+   picks "before the Stop head overfits", not "best policy" -- epoch 5, 15 and 17 above. One
+   rule for every configuration: a fixed epoch count, or validation motion loss only, with the
+   Stop threshold tuned on val in closed loop under the three-in-a-row rule.
+4. **"Which target did it choose" was scored by final position**, which misreads episodes that
+   end out of bounds. It is now scored by closest approach over the whole path.
+
+The fixed comparison is baseline vs relabelling vs relabelling + FiLM, three seeds each, one
+selection rule, decided on val -- roughly 1-1.5 hours of CPU. Whether to run it is open.
+
+This is roadmap **Phase 3** work (grounding and generalisation). Phase 1's exit criteria were
+met before these experiments.
+
 ## Phase 1 exit criteria (§5) -- status
 
 | criterion | status |

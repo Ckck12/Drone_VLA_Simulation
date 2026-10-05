@@ -29,7 +29,7 @@ from dronevla.action_adapter import ActionLimits
 from dronevla.dataset import load_episodes
 from dronevla.env import OUTCOMES, DroneTargetPairsEnv
 from dronevla.expert import StraightLineExpert
-from dronevla.model import TinyBC, Vocab, pad_batch
+from dronevla.model import TinyBC, Vocab, pad_batch, upgrade_state_dict
 from dronevla.task import Layout, Target, TaskConfig
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -62,8 +62,12 @@ class LearnedPolicy:
         self.vocab = Vocab([])
         self.vocab.itos = prep["vocab"]
         self.vocab.stoi = {t: i for i, t in enumerate(self.vocab.itos)}
-        self.model = TinyBC(len(self.vocab.itos))
-        self.model.load_state_dict(torch.load(run_dir / "model.pt", weights_only=True))
+        kwargs = self.config.get("model_kwargs", {})
+        self.model = TinyBC(len(self.vocab.itos), **kwargs)
+        self.model.load_state_dict(upgrade_state_dict(
+            torch.load(run_dir / "model.pt", weights_only=True)))
+        if kwargs.get("film"):
+            self.name = self.name.replace(" BC)", " BC, FiLM)")
         self.model.eval()
         self.mean = torch.tensor(prep["proprio_mean"])
         self.std = torch.tensor(prep["proprio_std"])

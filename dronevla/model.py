@@ -54,19 +54,45 @@ class Vocab:
 
 
 class TinyBC(nn.Module):
-    def __init__(self, vocab_size: int, text_dim: int = 32, proprio_dim: int = 11):
+    """`film=True` adds FiLM conditioning: the instruction scales and shifts every conv
+    layer's channels (x -> (1 + gamma) * x + beta, before the ReLU), so the words can change
+    *what the CNN extracts* instead of only joining a summary at the end. The FiLM generator
+    is zero-initialised, so training starts from exactly the unconditioned network."""
+
+    CHANNELS = (16, 32, 64, 64)
+
+    def __init__(self, vocab_size: int, text_dim: int = 32, proprio_dim: int = 11,
+                 film: bool = False):
         super().__init__()
-        self.cnn = nn.Sequential(
-            nn.Conv2d(3, 16, 5, stride=2, padding=2), nn.ReLU(),     # 48 x 64
-            nn.Conv2d(16, 32, 3, stride=2, padding=1), nn.ReLU(),    # 24 x 32
-            nn.Conv2d(32, 64, 3, stride=2, padding=1), nn.ReLU(),    # 12 x 16
-            nn.Conv2d(64, 64, 3, stride=2, padding=1), nn.ReLU(),    #  6 x  8
-        )
+        c = self.CHANNELS
+        self.convs = nn.ModuleList([
+            nn.Conv2d(3, c[0], 5, stride=2, padding=2),       # 48 x 64
+            nn.Conv2d(c[0], c[1], 3, stride=2, padding=1),    # 24 x 32
+            nn.Conv2d(c[1], c[2], 3, stride=2, padding=1),    # 12 x 16
+            nn.Conv2d(c[2], c[3], 3, stride=2, padding=1),    #  6 x  8
+        ])
+        self.film = nn.Linear(text_dim, 2 * sum(c)) if film else None
+        if film:
+            nn.init.zeros_(self.film.weight)
+            nn.init.zeros_(self.film.bias)
         self.img_fc = nn.Sequential(nn.Flatten(), nn.Linear(64 * 6 * 8, 128), nn.ReLU())
         self.embed = nn.Embedding(vocab_size, text_dim, padding_idx=0)
         self.prop = nn.Sequential(nn.Linear(proprio_dim, 32), nn.ReLU())
         self.head = nn.Sequential(nn.Linear(128 + text_dim + 32, 128), nn.ReLU(),
                                   nn.Linear(128, 5))
+
+    def cnn(self, x, text_vec=None):
+        params = self.film(text_vec) if self.film is not None else None
+        offset = 0
+        for conv, ch in zip(self.convs, self.CHANNELS):
+            x = conv(x)
+            if params is not None:
+                gamma = params[:, offset:offset + ch, None, None]
+                beta = params[:, offset + ch:offset + 2 * ch, None, None]
+                x = (1 + gamma) * x + beta
+                offset += 2 * ch
+            x = torch.relu(x)
+        return x
 
     def encode_text(self, ids: torch.Tensor) -> torch.Tensor:
         """(B, T) token ids, 0 = pad -> (B, text_dim) mean over real tokens."""
@@ -76,9 +102,22 @@ class TinyBC(nn.Module):
     def forward(self, rgb_u8: torch.Tensor, proprio: torch.Tensor, text_vec: torch.Tensor):
         """rgb_u8 (B, 96, 128, 3) uint8; proprio (B, 11) normalised; text_vec (B, text_dim)."""
         x = rgb_u8.permute(0, 3, 1, 2).float().div(255.0).sub(0.5)
-        feats = torch.cat([self.img_fc(self.cnn(x)), text_vec, self.prop(proprio)], dim=1)
+        feats = torch.cat([self.img_fc(self.cnn(x, text_vec)), text_vec, self.prop(proprio)],
+                          dim=1)
         out = self.head(feats)
         return torch.tanh(out[:, :4]), out[:, 4]
+
+
+def upgrade_state_dict(sd: dict) -> dict:
+    """Checkpoints written before FiLM stored the conv stack as an nn.Sequential named `cnn`
+    (convs at indices 0, 2, 4, 6, ReLUs between); it is now a ModuleList named `convs`."""
+    out = {}
+    for k, v in sd.items():
+        if k.startswith("cnn."):
+            idx, rest = k[len("cnn."):].split(".", 1)
+            k = f"convs.{int(idx) // 2}.{rest}"
+        out[k] = v
+    return out
 
 
 def count_parameters(model: nn.Module) -> int:
