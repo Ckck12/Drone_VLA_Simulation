@@ -27,6 +27,8 @@ RUN = "pair"             # "pair" : 같은 시작 상태에서 두 지시를 각
 POLICY = "expert"        # "expert": 정답 위치를 아는 스크립트 비행 (데이터셋을 만들 선생님)
                          # "manual": 아래 MANUAL_COMMANDS 대로 직접 조종
                          # "wrong" : 일부러 다른 물체로 가는 전문가 (평가기가 오답을 잡는지 보기)
+                         # "runs/bc_text" 같은 학습 결과 폴더: 학습된 정책 (관측만 받음)
+                         #   val 장면을 보려면 LAYOUT_SEED를 2001~2010 중 하나로
 
 INSTRUCTION_FAMILY = 0   # 0: "Go to the ... and stop." / 1: "Approach the ..., then hold position."
 
@@ -119,7 +121,20 @@ def make_policy(cfg):
         return lambda obs, info: e.act(info)
     if POLICY == "manual":
         return manual_policy(cfg)
-    sys.exit(f'POLICY must be "expert", "manual" or "wrong", got {POLICY!r}')
+    run = pathlib.Path(POLICY)
+    run = run if run.is_absolute() else REPO_ROOT / run
+    if (run / "config.json").exists():
+        from dronevla.evaluate import LearnedPolicy
+        learned = LearnedPolicy(run)
+
+        class Learned:                         # obs only, like dronevla/evaluate.py
+            def reset(self, instruction):
+                learned.reset(instruction)
+
+            def __call__(self, obs, info):
+                return learned.act(obs)
+        return Learned()
+    sys.exit(f'POLICY must be "expert", "manual", "wrong" or a run directory, got {POLICY!r}')
 
 
 def main():
@@ -143,6 +158,8 @@ def main():
         policy = make_policy(cfg)
         obs, info = env.reset(seed=LAYOUT_SEED, options={
             "layout": layout, "goal_index": goal, "instruction_family": INSTRUCTION_FAMILY})
+        if hasattr(policy, "reset"):
+            policy.reset(obs["instruction"])
         frames, path = [obs["rgb"]], [info["privileged"]["true_pos"]]
         if k == 0:
             vis = env.visibility_report()

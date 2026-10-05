@@ -61,6 +61,12 @@ Wilson 95% intervals in brackets.
 | test | RGB+text BC | 8/20 [0.22, 0.61] | **0/10** [0, 0.28] | 5 | 6 | 1 | 0.40 |
 | test | no-language BC | 4/20 [0.08, 0.42] | 0/10 | 5 | 4 | 7 | 0.40 |
 
+**Videos** (`scripts/rollout_video.py`, animated GIF, real time; val pair 0, since test is
+reserved for final reporting): `reports/videos/expert_val_pair0.gif` and
+`reports/videos/bc_text_val_pair0.gif`. In the second, both instructions command the same
+first action, v = (+0.50, -0.13) m/s -- rightward, toward the green cylinder -- including
+"Approach the blue box", whose box is on the left; the blue episode then leaves the room.
+
 Policy latency (one forward pass, CPU, batch 1): p50 2.8 ms, p95 3.5-4.0 ms. Figures:
 `reports/eval_v0.1_val.png`, `reports/eval_v0.1_test.png` -- the expert's two paths per pair
 split apart; the text policy's two paths lie on top of each other.
@@ -225,5 +231,5 @@ met before these experiments.
 | evaluator fixtures for success / wrong target / collision / timeout pass | met -- `tests/test_env.py` |
 | high success rate | **not an exit condition** (§5 says so explicitly) |
 | localhost service in the loop | not done |
-| paired rollout video | not done (the trajectory figures stand in for now) |
+| paired rollout video | **met** -- `reports/videos/*_val_pair0.gif`, any pair via `scripts/rollout_video.py` |
 | C1 C++ core used by the Python loop | not done |
