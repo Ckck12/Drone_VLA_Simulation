@@ -387,9 +387,9 @@ def fig_language_use():
                           "instructed": nums[3]}
     seeds = sorted(vals)
     fig, axes = plt.subplots(1, 3, figsize=(11, 2.9))
-    specs = [("success", 20, "episodes that succeed", 20, "expert 20/20"),
-             ("instructed", 20, "flew to the named target", 10, "coin flip 10/20"),
-             ("diff", 10, "pairs: two sentences → two targets", 10, "expert 10/10")]
+    specs = [("diff", 10, "pairs: two sentences → two targets", 10, "expert 10/10"),
+             ("instructed", 20, "flew to the named target", 10, "any word-blind policy: 10/20"),
+             ("success", 20, "episodes that succeed", 20, "expert 20/20")]
     for ax, (key, tot, title, ref, reflab) in zip(axes, specs):
         v = [int(vals[s][key].split("/")[0]) for s in seeds]
         ax.bar(range(3), v, width=0.5, color=POLICY)
