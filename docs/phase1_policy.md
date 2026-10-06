@@ -221,6 +221,42 @@ selection rule, decided on val -- roughly 1-1.5 hours of CPU. Whether to run it 
 This is roadmap **Phase 3** work (grounding and generalisation). Phase 1's exit criteria were
 met before these experiments.
 
+### Experiment 3: 5x the training scenes (2026-10-06), under the fixed protocol
+
+Prompted by the world model: with 100 instead of 20 training layouts, its target-position error
+on val halved ([phase1_world_model.md](phase1_world_model.md)). Does the same data fix the BC?
+
+The protocol was fixed before running:
+- the `bc_text` recipe, 20 epochs, last epoch kept, seeds 0/1/2
+- v0.1 (20 train layouts) and v0.2 (100 train layouts), the same recipe for both
+- closed loop on the 10 val pairs, which are identical in both datasets; test not touched
+
+v0.1 was re-run under this rule too. The earlier 7/20 came from one seed with val-loss selection.
+
+| val, 3 seeds | success /20 | pairs, both instructions /10 | **pairs, different targets /10** | out of bounds /60 | final distance to goal, median per seed |
+|---|---|---|---|---|---|
+| v0.1 (20 layouts) | 1, 5, 0 | 0, 0, 0 | 1, 2, 1 | 31 | 2.46, 2.01, 3.20 m |
+| v0.2 (100 layouts) | 3, 1, 2 | 0, 0, 0 | **0, 2, 0** | 8 | 1.38, 1.98, 1.12 m |
+
+Reproduce: `python scripts/language_use.py reports/eval_bc_scale_val.json`.
+
+**More scenes made the BC fly better but not listen.**
+- It leaves the room far less often (31 → 8 of 60 episodes) and ends closer to a target.
+- Which target it picks is still independent of the words. In every v0.2 seed it chose the
+  instructed target in exactly 10 of 20 episodes, and in 2 of 3 seeds both instructions sent it
+  to the same target in all 10 pairs. It commits to one target per scene, whatever it is told.
+
+So the shortcut is not a small-data artefact. Most rows can be predicted from the image alone,
+however many scenes there are. Scale helped the part of the problem that the image already
+answers (where the targets are, how to approach). It did not help the part only the words
+answer (which one).
+
+That is the case for the world-model track. It learns the image-answerable part, the positions
+of *every* coloured target, as its own supervised output, and that improved with scale. "Which
+one" is then a separate, explicit selection (stage 2) instead of something BC has to discover
+from about 2% of its rows. Stop timing remains weak in both datasets: `stop_elsewhere` and
+`stop_not_settled` together are 10–15 per seed on v0.2.
+
 ## Phase 1 exit criteria (§5) -- status
 
 | criterion | status |
