@@ -57,12 +57,17 @@ class TinyBC(nn.Module):
     """`film=True` adds FiLM conditioning: the instruction scales and shifts every conv
     layer's channels (x -> (1 + gamma) * x + beta, before the ReLU), so the words can change
     *what the CNN extracts* instead of only joining a summary at the end. The FiLM generator
-    is zero-initialised, so training starts from exactly the unconditioned network."""
+    is zero-initialised, so training starts from exactly the unconditioned network.
+
+    `aux_offsets=True` adds an auxiliary head on the fused features that predicts the
+    body-frame offset to each colour's hover point (the world model's supervised target, see
+    dronevla.world_model). It is a training signal only: the policy's action does not use it.
+    It exists so the BC-vs-world-model comparison gives both the same privileged supervision."""
 
     CHANNELS = (16, 32, 64, 64)
 
     def __init__(self, vocab_size: int, text_dim: int = 32, proprio_dim: int = 11,
-                 film: bool = False):
+                 film: bool = False, aux_offsets: bool = False):
         super().__init__()
         c = self.CHANNELS
         self.convs = nn.ModuleList([
@@ -80,6 +85,8 @@ class TinyBC(nn.Module):
         self.prop = nn.Sequential(nn.Linear(proprio_dim, 32), nn.ReLU())
         self.head = nn.Sequential(nn.Linear(128 + text_dim + 32, 128), nn.ReLU(),
                                   nn.Linear(128, 5))
+        self.aux_head = (nn.Sequential(nn.Linear(128 + text_dim + 32, 64), nn.ReLU(),
+                                       nn.Linear(64, 8)) if aux_offsets else None)
 
     def cnn(self, x, text_vec=None):
         params = self.film(text_vec) if self.film is not None else None
@@ -99,12 +106,16 @@ class TinyBC(nn.Module):
         mask = (ids != 0).unsqueeze(-1).float()
         return (self.embed(ids) * mask).sum(1) / mask.sum(1).clamp(min=1.0)
 
-    def forward(self, rgb_u8: torch.Tensor, proprio: torch.Tensor, text_vec: torch.Tensor):
-        """rgb_u8 (B, 96, 128, 3) uint8; proprio (B, 11) normalised; text_vec (B, text_dim)."""
+    def forward(self, rgb_u8: torch.Tensor, proprio: torch.Tensor, text_vec: torch.Tensor,
+                return_aux: bool = False):
+        """rgb_u8 (B, 96, 128, 3) uint8; proprio (B, 11) normalised; text_vec (B, text_dim).
+        With `return_aux`, also the auxiliary offset prediction (B, 8), in units of 3 m."""
         x = rgb_u8.permute(0, 3, 1, 2).float().div(255.0).sub(0.5)
         feats = torch.cat([self.img_fc(self.cnn(x, text_vec)), text_vec, self.prop(proprio)],
                           dim=1)
         out = self.head(feats)
+        if return_aux:
+            return torch.tanh(out[:, :4]), out[:, 4], self.aux_head(feats)
         return torch.tanh(out[:, :4]), out[:, 4]
 
 

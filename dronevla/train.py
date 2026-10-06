@@ -14,6 +14,9 @@ Rules kept from the roadmap:
 * `--overfit-pair` trains and validates on one train pair only, to debug the training path
   (Phase 1 item 4). Its result is never a generalisation number.
 * `--pilot` times 100 minibatches and extrapolates the full run (Phase 1 item 5)
+* `--aux-offsets` adds the world model's auxiliary target (body-frame offset to every colour's
+  hover point, from logged true positions) as a second loss with weight 1, so BC gets the same
+  privileged supervision as the world model in the BC-vs-planner comparison
 """
 from __future__ import annotations
 
@@ -39,9 +42,14 @@ PROPRIO_STD_FLOOR = 1e-2   # features that barely vary on train (e.g. sin yaw at
 
 
 def load_rows(root, episodes):
-    """Every action row of the given episodes, images decoded into memory."""
+    """Every action row of the given episodes, images decoded into memory, plus the
+    privileged body-frame offsets to every colour's hover point (for `--aux-offsets`)."""
+    from dronevla.world_model import body_offsets
     rgb, proprio, action, stop, instr, eid, tpos = [], [], [], [], [], [], []
+    offs, masks = [], []
     for e in episodes:
+        lay = json.loads((root / "layouts" / f"{e['layout_id']}.json").read_text())
+        n0 = len(tpos)
         for r in load_steps(root, e["episode_id"]):
             if not r["action_mask"]:
                 continue
@@ -52,12 +60,18 @@ def load_rows(root, episodes):
             instr.append(e["instruction"])
             eid.append(e["episode_id"])
             tpos.append(r["priv_true_pos"])
+        p = np.asarray(proprio[n0:], dtype=np.float64)
+        o, m = body_offsets(lay, np.asarray(tpos[n0:]), np.arctan2(p[:, 5], p[:, 6]))
+        offs.append(o.reshape(len(o), -1))
+        masks.append(np.repeat(m, 2, axis=1))
     return {"rgb": torch.from_numpy(np.stack(rgb)),
             "proprio": torch.tensor(proprio, dtype=torch.float32),
             "action": torch.tensor(action, dtype=torch.float32),
             "stop": torch.tensor(stop, dtype=torch.float32),
             "instr": instr, "episode_id": eid,
-            "priv_true_pos": np.asarray(tpos, dtype=np.float64)}
+            "priv_true_pos": np.asarray(tpos, dtype=np.float64),
+            "offsets": torch.from_numpy(np.concatenate(offs)).float(),
+            "offset_mask": torch.from_numpy(np.concatenate(masks)).float()}
 
 
 def expert_label(expert, true_pos, proprio, goal_hover_point):
@@ -212,6 +226,8 @@ def main(argv=None) -> int:
     ap.add_argument("--counterfactual", action="store_true",
                     help="add a counterfactual-relabelled copy of every training state; the "
                          "Stop pos_weight and proprio statistics stay those of the original rows")
+    ap.add_argument("--aux-offsets", action="store_true",
+                    help="auxiliary loss on body-frame offsets to every colour's hover point")
     ap.add_argument("--select", choices=["best_val", "last"], default="best_val",
                     help="keep the epoch with the lowest validation loss (default) or the last "
                          "one -- 'last' tests whether early selection stopped training too soon")
@@ -239,6 +255,9 @@ def main(argv=None) -> int:
     load_s = time.perf_counter() - t_load
     prep = Prepared(train, caps, args.no_language)
     model_kwargs = {"film": args.film}
+    if args.aux_offsets:
+        assert not args.counterfactual, "--aux-offsets with --counterfactual is not implemented"
+        model_kwargs["aux_offsets"] = True
     model = TinyBC(len(prep.vocab), **model_kwargs)
     n_params = count_parameters(model)
     pos = float(train["stop"].sum())
@@ -270,8 +289,15 @@ def main(argv=None) -> int:
     def train_step(idx):
         model.train()
         rgb, prop, ids, act, stp = prep.batch(train, idx)
-        m, logit = model(rgb, prop, model.encode_text(ids))
-        loss = huber(m, act) + bce(logit, stp)
+        if args.aux_offsets:
+            m, logit, aux = model(rgb, prop, model.encode_text(ids), return_aux=True)
+            om = train["offset_mask"][idx]
+            target = train["offsets"][idx] / 3.0                  # world_model.OFFSET_SCALE
+            aux_loss = (((aux - target) ** 2) * om).sum() / om.sum().clamp(min=1)
+        else:
+            m, logit = model(rgb, prop, model.encode_text(ids))
+            aux_loss = 0.0
+        loss = huber(m, act) + bce(logit, stp) + aux_loss
         opt.zero_grad()
         loss.backward()
         opt.step()

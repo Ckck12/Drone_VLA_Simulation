@@ -93,7 +93,14 @@ class LearnedPolicy:
 
 
 def load_policy(spec, cfg):
-    return OraclePolicy(cfg) if spec == "expert" else LearnedPolicy(pathlib.Path(spec))
+    """`expert`, a BC run directory, or a world-model planner (`plan:<run>:<dynamics>`,
+    `plan-oracle`; see dronevla.planner)."""
+    if spec == "expert":
+        return OraclePolicy(cfg)
+    if spec.startswith("plan"):
+        from dronevla.planner import policy_from_spec
+        return policy_from_spec(spec)
+    return LearnedPolicy(pathlib.Path(spec))
 
 
 # -------------------------------------------------------------------------- scenarios

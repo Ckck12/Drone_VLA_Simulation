@@ -6,7 +6,7 @@ Which target an episode went for is scored by closest approach over the whole pa
 episodes that end out of bounds are still read correctly. "different targets" counts pairs where
 the two instructions sent the drone to different targets; a policy that ignores the words scores
 0 there and exactly half on "chose the instructed target". Runs named `<config>_s<seed>` are
-grouped by `<config>`.
+grouped by `<config>` (taken from the policy name).
 """
 import argparse
 import json
@@ -51,7 +51,7 @@ for name, v in rep["policies"].items():
     print(f"{name:30s} {s['success']:3d}/{s['episodes']:<4d} {s['pair_success']:4d}/{s['pairs']:<4d} "
           f"{diff:6d}/{len(by_pair):<5d} {chosen:5d}/{len(v['trials']):<5d}  {oc}")
     if not v["oracle"]:
-        key = re.sub(r"_s\d+$", "", pathlib.Path(v["spec"]).name)
+        key = re.sub(r"_s\d+$", "", name.split(" (")[0])
         groups.setdefault(key, []).append((s["success"], s["pair_success"], diff, chosen))
 print()
 for k, r in groups.items():

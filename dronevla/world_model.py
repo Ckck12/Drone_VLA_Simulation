@@ -57,6 +57,22 @@ def episode_list(root: pathlib.Path, split: str | None):
     return [e for e in eps if split is None or e["split"] == split]
 
 
+def body_offsets(lay, pos, yaw):
+    """Body-frame (yaw only) offset from each position to each colour's hover point.
+    lay: layout dict; pos (n, >=2) world; yaw (n,). Returns offsets (n, 4, 2) and mask (n, 4)."""
+    n = len(pos)
+    off = np.zeros((n, len(COLOUR_ORDER), 2), dtype=np.float32)
+    mask = np.zeros((n, len(COLOUR_ORDER)), dtype=np.float32)
+    cy, sy = np.cos(yaw), np.sin(yaw)
+    for ti, t in enumerate(lay["targets"]):
+        c = COLOUR_ORDER.index(t["color"])
+        d = np.asarray(lay["hover_points"][ti][:2])[None, :] - np.asarray(pos)[:, :2]
+        off[:, c, 0] = cy * d[:, 0] + sy * d[:, 1]          # world -> body (yaw only)
+        off[:, c, 1] = -sy * d[:, 0] + cy * d[:, 1]
+        mask[:, c] = 1.0
+    return off, mask
+
+
 def load_episode_arrays(root, e):
     """Per-row arrays for one episode, including colour-slot offsets from the layout."""
     lay = json.loads((root / "layouts" / f"{e['layout_id']}.json").read_text())
@@ -71,17 +87,7 @@ def load_episode_arrays(root, e):
             act[i] = r["action_applied"][:2]
             flown[i] = True
     pos = np.array([r["priv_true_pos"] for r in rows])
-    off = np.zeros((n, len(COLOUR_ORDER), 2), dtype=np.float32)
-    mask = np.zeros((n, len(COLOUR_ORDER)), dtype=np.float32)
-    yaw = np.arctan2(prop[:, 5], prop[:, 6])
-    for ti, t in enumerate(lay["targets"]):
-        c = COLOUR_ORDER.index(t["color"])
-        h = np.asarray(lay["hover_points"][ti][:2])
-        d = h[None, :] - pos[:, :2]
-        cy, sy = np.cos(yaw), np.sin(yaw)
-        off[:, c, 0] = cy * d[:, 0] + sy * d[:, 1]          # world -> body (yaw only)
-        off[:, c, 1] = -sy * d[:, 0] + cy * d[:, 1]
-        mask[:, c] = 1.0
+    off, mask = body_offsets(lay, pos, np.arctan2(prop[:, 5], prop[:, 6]))
     return {"rgb": rgb, "prop": prop, "act": act, "flown": flown,
             "off": off.reshape(n, -1), "mask": mask, "pos": pos, "episode_id": e["episode_id"]}
 
