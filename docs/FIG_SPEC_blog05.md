@@ -40,7 +40,7 @@ named below. Panels without data are schematics and are labelled as such.
 | panels | One column per example pair. Top row: the regression output (one marker per sentence) against the two expert labels. Bottom row: the token probabilities over the vy bins for each sentence. |
 | comparison unit | The same frame, the same state, two sentences. |
 | axes | vy in m/s, with the same range in every panel. |
-| possible misreading | That this holds for every frame, or that tokens pick the *right* answer. The panels show the first four training pairs in order (not selected). Aggregate over all 200 first frames, from `02_midpoint_vs_pick.json`: regression is closer to its own answer in 100/200 and to the partner's in 100/200; tokens 135 and 65, with a median error of 0.0005 m/s and a mean of 0.066. Pair 2 shows a wrong pick. Rendered as mirrored stems: sentence A up, sentence B down. |
+| possible misreading | That this holds for every frame, or that tokens pick the *right* answer. The panels show the first four training pairs in order (not selected). Aggregate over all 200 first frames, from `02_midpoint_vs_pick.json`: regression is closer to its own answer in 100/200 and to the partner's in 100/200; tokens 135 and 65, with a median error of 0.0005 m/s and a mean of 0.066. Training pair 0, sentence B (green) is a wrong pick: most of its mass sits on the red answer. Training pair 1, sentence A is split across three bins, though its argmax is right. Pair numbering is 0-based throughout, matching `--pair` and the GIF headers. Rendered as mirrored stems: sentence A up, sentence B down. |
 
 ## F5-3 Attention maps (measured)
 Two frames: attention-only regression versus attention with tokens, the same first frames, both

@@ -86,7 +86,7 @@ def fig_method():
     c.arrow((146, 232), (182, 232))
     c.tokens(186, 232, 7, "#C9D2DC", GRAY, s=8, step=11)
     c.txt(222, 252, "word embeddings", FS_S, DGRAY)
-    c.txt(222, 212, "17-word vocab", FS_S, DGRAY)
+    c.txt(222, 212, "15-word vocab", FS_S, DGRAY)
     c.arrow((262, 232), (296, 232))
     c.rbox(298, 216, 62, 32, fc="white", ec=GRAY, r=3)
     c.txt(329, 232, "mean", FS_S, DGRAY)
@@ -118,10 +118,10 @@ def fig_method():
     y = 372
     c.mlp(554, y - 8, 46, 16, fc="#E2E2E2", ec=GRAY, label="MLP")
     c.arrow((602, y), (628, y))
-    c.rbox(630, y - 16, 96, 32, fc="white", ec=GRAY, r=3)
-    c.txt(678, y + 3, "tanh × limit", FS_S, DGRAY)
-    c.txt(678, y - 9, "→ vx, vy", FS_S, DGRAY)
-    c.arrow((728, y), (750, y))
+    c.rbox(628, y - 16, 108, 32, fc="white", ec=GRAY, r=3)
+    c.txt(682, y + 3, "tanh × limit", FS_S, DGRAY)
+    c.txt(682, y - 9, "→ vx, vy, vz, yaw", FS_S, DGRAY)
+    c.arrow((738, y), (752, y))
     c.txt(756, y + 4, "one number per axis", FS_S, DGRAY, ha="left")
     c.txt(756, y - 10, "e.g. vy = +0.04 m/s", FS_S, DGRAY, ha="left")
     c.txt(552, y - 34, "train: Huber loss against the expert's speed", FS_S, GRAY, ha="left", style="italic")
@@ -134,9 +134,9 @@ def fig_method():
     mini_hist(c, 704, y - 4, 70, 22, 0.30, ORANGE)
     c.txt(739, y - 14, "vy: 256 bins", FS_S, DGRAY)
     c.arrow((778, y + 6), (800, y + 6))
-    c.txt(806, y + 12, "pick the most", FS_S, DGRAY, ha="left")
-    c.txt(806, y - 1, "likely bin → its", FS_S, DGRAY, ha="left")
-    c.txt(806, y - 14, "centre speed", FS_S, DGRAY, ha="left")
+    c.txt(806, y + 12, "pick the most likely", FS_S, DGRAY, ha="left")
+    c.txt(806, y - 1, "bin → its centre speed", FS_S, DGRAY, ha="left")
+    c.txt(806, y - 14, "(vz, yaw = 0)", FS_S, ORANGE, ha="left")
     c.txt(552, y - 34, "train: cross-entropy against the expert's bin", FS_S, ORANGE, ha="left",
           style="italic")
     c.txt(552, y - 46, "bins span the 1st–99th percentile of the training speeds", FS_S, ORANGE,
@@ -162,10 +162,14 @@ def fig_method():
           style="italic")
 
     # legend / note
-    c.rect(170, 52, 14, 10, fc="#C9D2DC", ec=GRAY, lw=0.5, z=5)
-    c.txt(190, 57, "unchanged from Part 4", FS_S, DGRAY, ha="left")
-    c.rect(340, 52, 14, 10, fc=LORANGE, ec=ORANGE, lw=0.8, z=5)
-    c.txt(360, 57, "changed in this post", FS_S, DGRAY, ha="left")
+    c.rect(170, 25, 14, 10, fc="#C9D2DC", ec=GRAY, lw=0.5, z=5)
+    c.txt(190, 30, "unchanged from Part 4", FS_S, DGRAY, ha="left")
+    c.rect(340, 25, 14, 10, fc=LORANGE, ec=ORANGE, lw=0.8, z=5)
+    c.txt(360, 30, "changed: tokens", FS_S, DGRAY, ha="left")
+    c.rect(466, 25, 14, 10, fc=LGREEN, ec=GREEN, lw=0.8, z=5)
+    c.txt(486, 30, "+ chunk", FS_S, DGRAY, ha="left")
+    c.txt(540, 13, "vz and yaw rate are 0 in every expert action; (b, c) do not predict them.",
+          FS_S, GRAY, ha="left")
     c.txt(540, 58, "Every head also outputs a Stop logit (binary cross-entropy).", FS_S, GRAY,
           ha="left")
     c.txt(540, 43, "Results: validation, single training seed. Bar shapes are illustrative.",
@@ -299,7 +303,7 @@ def fig_midpoint(n_show=4):
         ax.axvline(expert[[a, b]].mean(), color=GRAY, ls=":", lw=1)
         ax.set_ylim(-0.6, 1.6)
         ax.set_yticks([0, 1], ["regression\n(Part 4)", "expert"] if j == 0 else ["", ""])
-        ax.set_title(f"training pair {j + 1}", fontsize=FS)
+        ax.set_title(f"training pair {j}", fontsize=FS)
         style_ax(ax)
         ax = axes[1, j]
         for k, (i, sign) in enumerate([(a, 1), (b, -1)]):
@@ -323,7 +327,7 @@ def fig_midpoint(n_show=4):
     fig.legend(handles=h, loc="lower center", ncol=5, frameon=False, fontsize=FS_S,
                bbox_to_anchor=(0.5, 0.0))
     fig.suptitle("Same first frame, two sentences: regression gives one in-between answer;\n"
-                 "tokens put their probability on one expert answer (not always the right one)",
+                 "tokens put their probability mostly on one expert answer (not always the right one)",
                  x=0.01, ha="left", fontsize=FS_T, weight="bold")
     fig.tight_layout(rect=(0, 0.06, 1, 1))
     fig.savefig(OUT / "02_midpoint_vs_pick.png", dpi=200)
@@ -344,7 +348,7 @@ def fig_attention(pair_ids=(0, 1)):
         rgb = np.asarray(Image.open(DATA / st["rgb_path"]))
         obs = {"rgb": rgb, "proprio": np.asarray(st["proprio"], dtype=np.float32)}
         axes[r, 0].imshow(rgb)
-        axes[r, 0].set_title(f"val pair {pi + 1}: first frame", fontsize=FS_S)
+        axes[r, 0].set_title(f"val pair {pi}: first frame", fontsize=FS_S)
         for m, pol in enumerate(pols):
             for g, e in enumerate(pair):
                 pol.reset(e["instruction"])
@@ -455,8 +459,8 @@ def fig_paths(pair_ids=(0, 1, 2)):
             if r == 0:
                 ax.set_title(MODELS[k][1], fontsize=FS, weight="bold")
             if c_ == 0:
-                ax.set_ylabel(f"val pair {pi + 1}", fontsize=FS)
-    fig.suptitle("Top view of the first three validation pairs (not selected).  ▲ start   ★ success   "
+                ax.set_ylabel(f"val pair {pi}", fontsize=FS)
+    fig.suptitle("Top view of validation pairs 0-2 (not selected).  ▲ start   ★ success   "
                  "× failure   dotted circle = 0.4 m goal region", x=0.01, ha="left", fontsize=FS)
     fig.tight_layout(h_pad=2.6)
     fig.savefig(OUT / "05_paths.png", dpi=200, bbox_inches="tight")
@@ -511,7 +515,8 @@ def fig_reaction():
     h = [plt.Rectangle((0, 0), 1, 1, color=c, hatch=hh, ec="white") for _, c, hh in cats]
     a2.legend(h, [c.replace("_", " ") for c, _, _ in cats], ncol=4, frameon=False, fontsize=6.8,
               loc="upper center", bbox_to_anchor=(0.45, -0.08), handlelength=1.2)
-    fig.suptitle("Exploration states make the words count — and the drone stops stopping",
+    fig.suptitle("Exploration states: expert-level reaction on training frames — but in flight "
+                 "the drone stops stopping",
                  x=0.01, ha="left", fontsize=FS_T, weight="bold")
     fig.tight_layout()
     fig.savefig(OUT / "06_reaction_vs_stop.png", dpi=200, bbox_inches="tight")
