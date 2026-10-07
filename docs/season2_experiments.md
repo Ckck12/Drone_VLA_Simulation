@@ -81,7 +81,7 @@ script asserts that the repeats give identical outcomes.
    - Candidate causes, not separated:
      - Stop supervision diluted: 6 Stop positives among the exploration rows; pos_weight was
        recomputed to 43.4.
-     - The lateral bin range widened from ±0.35 to ±0.85, so each bin is 2.4x coarser.
+     - The lateral bin range widened from ±0.35 to ±0.85 of the speed cap (about ±0.17 to ±0.42 m/s), so each bin is 2.4x coarser.
      - Overshoot recovery labels near the goal.
 5. **Counterfactual relabelling makes the words matter but not reliably** (correct ≈ inverted),
    and flight collapses. Part of that collapse is a confound: the relabelled rows add zero Stop
