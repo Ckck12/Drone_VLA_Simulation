@@ -1,0 +1,57 @@
+train runs/bc_tokchunk8_explore_v0.2_s0 --action-bins 256 --img-dim 104 --chunk 8 --explore data/explore_v0.2/train  11:32:36
+pybullet build time: Oct  4 2026 20:59:54
+exploration: 400 episodes, 19896 relabelled states added to 9952 demo rows; Stop positives among them 6
+action chunks: H=8, valid future steps 0.393 of all
+action tokens: 256 bins on dims (0, 1), edges [(0.0, 1.0), (-0.828, 0.848)]
+train rows 29848 (200 episodes), val rows 1028 (20 episodes), loaded in 7.8 s
+model 470,633 parameters; vocab 17 ; Stop positives 672/29848 -> pos_weight 43.4; torch threads 8
+  epoch   0  train 3.5536  val 0.4532  val horizontal RMSE 0.109 m/s
+  epoch   5  train 2.1259  val 0.2927  val horizontal RMSE 0.102 m/s
+  epoch  10  train 1.7939  val 0.3846  val horizontal RMSE 0.100 m/s
+  epoch  15  train 1.6022  val 0.4449  val horizontal RMSE 0.098 m/s
+  epoch  19  train 1.4916  val 0.6903  val horizontal RMSE 0.108 m/s
+best epoch 19 (val loss 0.6903); val horizontal RMSE 0.108 m/s; Stop threshold 1.175 (val F1 0.775, precision 0.69, recall 0.88); trained 1236 s
+wrote runs/bc_tokchunk8_explore_v0.2_s0
+train runs/bc_tokchunk8_explore_aux_v0.2_s0 --action-bins 256 --img-dim 100 --chunk 8 --aux-offsets --explore data/explore_v0.2/train  11:53:44
+pybullet build time: Oct  4 2026 20:59:54
+exploration: 400 episodes, 19896 relabelled states added to 9952 demo rows; Stop positives among them 6
+action chunks: H=8, valid future steps 0.393 of all
+action tokens: 256 bins on dims (0, 1), edges [(0.0, 1.0), (-0.828, 0.848)]
+train rows 29848 (200 episodes), val rows 1028 (20 episodes), loaded in 7.4 s
+model 468,909 parameters; vocab 17 ; Stop positives 672/29848 -> pos_weight 43.4; torch threads 8
+  epoch   0  train 3.6601  val 0.4922  val horizontal RMSE 0.143 m/s
+  epoch   5  train 2.1652  val 0.3220  val horizontal RMSE 0.133 m/s
+  epoch  10  train 1.7981  val 0.4173  val horizontal RMSE 0.121 m/s
+  epoch  15  train 1.5991  val 0.4257  val horizontal RMSE 0.117 m/s
+  epoch  19  train 1.4775  val 0.7209  val horizontal RMSE 0.109 m/s
+best epoch 19 (val loss 0.7209); val horizontal RMSE 0.109 m/s; Stop threshold -0.064 (val F1 0.761, precision 0.65, recall 0.92); trained 1293 s
+wrote runs/bc_tokchunk8_explore_aux_v0.2_s0
+evaluate 12:15:48
+pybullet build time: Oct  4 2026 20:59:54
+/home/pchan/dronevla/.venv/lib/python3.12/site-packages/gymnasium/spaces/box.py:231: UserWarning: [33mWARN: Box low's precision lowered by casting to float32, current low.dtype=float64[0m
+  gym.logger.warn(
+/home/pchan/dronevla/.venv/lib/python3.12/site-packages/gymnasium/spaces/box.py:297: UserWarning: [33mWARN: Box high's precision lowered by casting to float32, current high.dtype=float64[0m
+  gym.logger.warn(
+[INFO] BaseAviary.__init__() loaded parameters from the drone's .urdf:
+[INFO] m 0.027000, L 0.039700,
+[INFO] ixx 0.000014, iyy 0.000014, izz 0.000022,
+[INFO] kf 3.160000e-10, km 7.940000e-12,
+[INFO] t2w 2.250000, max_speed_kmh 30.000000,
+[INFO] gnd_eff_coeff 11.368590, prop_radius 0.023135,
+[INFO] drag_xy_coeff 0.000001, drag_z_coeff 0.000001,
+[INFO] dw_coeff_1 2267.180000, dw_coeff_2 0.160000, dw_coeff_3 -0.110000
+bc_tokchunk8_v0.2_s0 (RGB+text BC, 256-bin tokens, chunk 8, exec 1) SR  8/20 [0.219, 0.613]  pairs 3/10  wrong-target 6  timeout 0  collision 3  OSR 0.65  NE med 0.29 m  latency p50 3.21 ms
+bc_tokchunk8_explore_v0.2_s0 (RGB+text BC, 256-bin tokens, chunk 8, exec 1) SR  6/20 [0.145, 0.519]  pairs 0/10  wrong-target 0  timeout 2  collision 4  OSR 0.65  NE med 2.11 m  latency p50 3.13 ms
+bc_tokchunk8_explore_aux_v0.2_s0 (RGB+text BC, 256-bin tokens, chunk 8, exec 1) SR  2/20 [0.028, 0.301]  pairs 0/10  wrong-target 5  timeout 3  collision 5  OSR 0.50  NE med 1.60 m  latency p50 3.10 ms
+wrote reports/eval_explore_s0_val.json and reports/eval_explore_s0_val.png
+policy                                       succ pairOK  correct inverted collapsed  nearer left   params  train_s
+bc_tokchunk8_v0.2_s0 (RGB+text BC, 256-bin t    8      3        4        1         5       9    7   470633  1929
+bc_tokchunk8_explore_v0.2_s0 (RGB+text BC, 2    6      0        5        2         3       9    9   470633  1236
+bc_tokchunk8_explore_aux_v0.2_s0 (RGB+text B    2      0        5        2         3      13    9   468909  1293
+wrote reports/explore_s0_val_summary.json
+runs/bc_tokchunk8_explore_v0.2_s0 {'t = 0': 0.1963, 't = 1-4': 0.0033, 't = 5-9': 0.0033, 't >= 10': 0.0033} dir 180/200
+runs/bc_tokchunk8_explore_aux_v0.2_s0 {'t = 0': 0.1849, 't = 1-4': 0.0033, 't = 5-9': 0.0033, 't >= 10': 0.0033} dir 168/200
+expert {'t = 0': 0.1999, 't = 1-4': 0.2094, 't = 5-9': 0.2363, 't >= 10': 0.435}
+share of rows {'t = 0': 0.02009646302250804, 't = 1-4': 0.08038585209003216, 't = 5-9': 0.10048231511254019, 't >= 10': 0.7990353697749196} relabel check {'own_goal_max_abs_error_mps': {'median': 0.0, 'p99': 0.0, 'max': 1.4901161193847656e-08}, 'own_goal_stop_agreement': 1.0, 'counterfactual_rows': 9952, 'counterfactual_stop_positives': 0}
+wrote reports/instruction_sensitivity_explore_train.json
+done 12:19:40

@@ -138,6 +138,53 @@ def counterfactual_relabel(root, episodes, data, cfg):
     return aug, report
 
 
+def add_exploration(train, explore_root, cfg, seed):
+    """Append exploration states (dronevla.explore: noisy expert, random walk, overshoot) to
+    the training rows, each relabelled by the oracle expert toward one of the layout's two
+    targets, chosen at random per episode, with that target's instruction. These are the
+    states the world model saw and the demonstrations never reach."""
+    import pyarrow.parquet as pq
+    from dronevla.action_adapter import ActionLimits
+    from dronevla.expert import StraightLineExpert
+    from dronevla.task import Target, TaskConfig, make_instruction
+    task_cfg = TaskConfig(**{k: (tuple(v) if isinstance(v, list) else v)
+                             for k, v in cfg.items() if k != "limits"},
+                          limits=ActionLimits(**cfg["limits"]))
+    expert = StraightLineExpert(task_cfg)
+    # exploration episodes have no instruction; load_rows needs the key, the label is set below
+    eps = [dict(e, instruction="") for e in pq.read_table(explore_root / "episodes.parquet").to_pylist()]
+    data = load_rows(explore_root, eps)
+    rng = np.random.default_rng([seed, 7])
+    choice = {e["episode_id"]: (int(rng.integers(2)), int(rng.integers(2))) for e in eps}
+    lay = {e["episode_id"]: json.loads((explore_root / "layouts" / f"{e['layout_id']}.json")
+                                       .read_text()) for e in eps}
+    acts, stops, instr = [], [], []
+    for i, eid in enumerate(data["episode_id"]):
+        g, fam = choice[eid]
+        L = lay[eid]
+        a, s = expert_label(expert, data["priv_true_pos"][i], data["proprio"][i].numpy(),
+                            L["hover_points"][g])
+        acts.append(a)
+        stops.append(s)
+        instr.append(make_instruction(Target(**L["targets"][g]), fam))
+    n0, n1 = len(train["stop"]), len(stops)
+    out = {
+        "rgb": torch.cat([train["rgb"], data["rgb"]]),
+        "proprio": torch.cat([train["proprio"], data["proprio"]]),
+        "action": torch.cat([train["action"], torch.tensor(np.stack(acts))]),
+        "stop": torch.cat([train["stop"], torch.tensor(stops, dtype=torch.float32)]),
+        "instr": train["instr"] + instr,
+        "episode_id": train["episode_id"] + [f"x:{e}" for e in data["episode_id"]],
+        "priv_true_pos": np.concatenate([train["priv_true_pos"], data["priv_true_pos"]]),
+        "offsets": torch.cat([train["offsets"], data["offsets"]]),
+        "offset_mask": torch.cat([train["offset_mask"], data["offset_mask"]]),
+        "is_explore": torch.cat([torch.zeros(n0, dtype=torch.bool), torch.ones(n1, dtype=torch.bool)]),
+    }
+    print(f"exploration: {len(eps)} episodes, {n1} relabelled states added to {n0} demo rows; "
+          f"Stop positives among them {int(sum(stops))}")
+    return out
+
+
 class Prepared:
     """Normalisation and text encoding fixed from the training rows."""
 
@@ -226,6 +273,26 @@ def main(argv=None) -> int:
     ap.add_argument("--counterfactual", action="store_true",
                     help="add a counterfactual-relabelled copy of every training state; the "
                          "Stop pos_weight and proprio statistics stay those of the original rows")
+    ap.add_argument("--action-bins", type=int, default=0,
+                    help="OpenVLA-style action tokens: discretise vx, vy into this many bins "
+                         "(1st-99th percentile of train actions) and train with cross-entropy "
+                         "instead of Huber regression; 0 = continuous head")
+    ap.add_argument("--chunk", type=int, default=1,
+                    help="predict this many future steps of action tokens and Stop at once "
+                         "(token head only); the policy may execute 1..chunk of them")
+    ap.add_argument("--paired-goal", action="store_true",
+                    help="auxiliary loss: on the same frame, both sentences of the pair must "
+                         "predict the offset to the target each one names")
+    ap.add_argument("--head-hidden", type=int, default=128)
+    ap.add_argument("--explore", default=None,
+                    help="exploration split dir (e.g. data/explore_v0.2/train): its states are "
+                         "relabelled by the oracle expert toward one of the layout's two targets "
+                         "(chosen per episode) and added to the training rows")
+    ap.add_argument("--img-dim", type=int, default=128,
+                    help="width of the image feature vector (used to keep parameter counts comparable)")
+    ap.add_argument("--attn", action="store_true",
+                    help="language-conditioned cross-attention over the 6x8 patch map instead of "
+                         "flattening it (see dronevla/model.py)")
     ap.add_argument("--aux-offsets", action="store_true",
                     help="auxiliary loss on body-frame offsets to every colour's hover point")
     ap.add_argument("--select", choices=["best_val", "last"], default="best_val",
@@ -254,14 +321,32 @@ def main(argv=None) -> int:
     train, val = load_rows(root, train_eps), load_rows(root, val_eps)
     load_s = time.perf_counter() - t_load
     prep = Prepared(train, caps, args.no_language)
+    if args.explore:
+        train = add_exploration(train, pathlib.Path(args.explore), cfg, args.seed)
     model_kwargs = {"film": args.film}
+    if args.attn:
+        model_kwargs["attn"] = True
+    if args.action_bins:
+        model_kwargs["action_bins"] = args.action_bins
+    if args.img_dim != 128:
+        model_kwargs["img_dim"] = args.img_dim
+    if args.head_hidden != 128:
+        model_kwargs["head_hidden"] = args.head_hidden
+    if args.chunk > 1:
+        assert args.action_bins and not args.counterfactual, "--chunk needs --action-bins, no --counterfactual"
+        model_kwargs["chunk"] = args.chunk
+    if args.paired_goal:
+        assert not args.counterfactual, "--paired-goal with --counterfactual is not implemented"
+        model_kwargs["paired_goal"] = True
     if args.aux_offsets:
         assert not args.counterfactual, "--aux-offsets with --counterfactual is not implemented"
         model_kwargs["aux_offsets"] = True
     model = TinyBC(len(prep.vocab), **model_kwargs)
     n_params = count_parameters(model)
     pos = float(train["stop"].sum())
-    pos_weight = (len(train["stop"]) - pos) / max(pos, 1.0)   # from the original rows only
+    # from the training rows before counterfactual relabelling (with --explore: including
+    # the relabelled exploration rows, so the Stop class balance matches the data trained on)
+    pos_weight = (len(train["stop"]) - pos) / max(pos, 1.0)
     cf_report = None
     if args.counterfactual:
         from dronevla.action_adapter import ActionLimits
@@ -276,6 +361,50 @@ def main(argv=None) -> int:
         print(f"counterfactual relabelling: {cf_report}")
     huber = nn.SmoothL1Loss(beta=0.1)
     bce = nn.BCEWithLogitsLoss(pos_weight=torch.tensor(pos_weight))
+    if args.chunk > 1:
+        # future rows of the same episode (action rows are consecutive in time); masked past the end
+        eid = np.asarray(train["episode_id"])
+        n_rows = len(eid)
+        H = args.chunk
+        ca = torch.zeros(n_rows, H, 4)
+        cs = torch.zeros(n_rows, H)
+        cm = torch.zeros(n_rows, H)
+        for k in range(H):
+            j = np.arange(n_rows) + k
+            ok = (j < n_rows)
+            ok[ok] = eid[j[ok]] == eid[np.arange(n_rows)[ok]]
+            jj = torch.from_numpy(np.where(ok, j, 0))
+            okt = torch.from_numpy(ok)
+            ca[:, k] = torch.where(okt[:, None], train["action"][jj], torch.zeros(1, 4))
+            cs[:, k] = torch.where(okt, train["stop"][jj], torch.zeros(1))
+            cm[:, k] = okt.float()
+        if "is_explore" in train:
+            # an exploration trajectory is not the expert's plan: only its current step is
+            # a valid label, so future chunk steps are masked out for those rows
+            cm[train["is_explore"], 1:] = 0.0
+        train["chunk_action"], train["chunk_stop"], train["chunk_mask"] = ca, cs, cm
+        print(f"action chunks: H={H}, valid future steps {cm.mean().item():.3f} of all")
+    if args.paired_goal:
+        # per row: colour slot of the named target, of the partner's target, and the partner's sentence
+        from dronevla.world_model import COLOUR_ORDER
+        meta = {e["episode_id"]: e for e in train_eps}
+        partner = {}
+        for e in train_eps:
+            for o in train_eps:
+                if o["pair_id"] == e["pair_id"] and o["episode_id"] != e["episode_id"]:
+                    partner[e["episode_id"]] = o
+        own_c = torch.tensor([COLOUR_ORDER.index(meta[x]["goal_color"]) for x in train["episode_id"]])
+        oth_c = torch.tensor([COLOUR_ORDER.index(partner[x]["goal_color"]) for x in train["episode_id"]])
+        train["partner_instr"] = [partner[x]["instruction"] for x in train["episode_id"]]
+        off = train["offsets"].reshape(-1, len(COLOUR_ORDER), 2) / 3.0      # world_model.OFFSET_SCALE
+        r = torch.arange(len(own_c))
+        train["goal_own"], train["goal_oth"] = off[r, own_c], off[r, oth_c]
+        print(f"paired goal targets: {len(own_c)} rows, mean |offset| own "
+              f"{train['goal_own'].norm(dim=1).mean().item() * 3:.2f} m")
+    if args.action_bins:
+        model.set_action_bins(train["action"] / prep.caps)
+        print(f"action tokens: {args.action_bins} bins on dims {model.TOKEN_DIMS}, edges "
+              f"{[(round(float(e[0]), 3), round(float(e[-1]), 3)) for e in model.bin_edges]}")
     opt = torch.optim.Adam(model.parameters(), lr=args.lr)
     n = len(train["stop"])
     steps_per_epoch = (n + args.batch - 1) // args.batch
@@ -289,15 +418,50 @@ def main(argv=None) -> int:
     def train_step(idx):
         model.train()
         rgb, prop, ids, act, stp = prep.batch(train, idx)
-        if args.aux_offsets:
+        if args.aux_offsets and not args.action_bins:
             m, logit, aux = model(rgb, prop, model.encode_text(ids), return_aux=True)
             om = train["offset_mask"][idx]
             target = train["offsets"][idx] / 3.0                  # world_model.OFFSET_SCALE
             aux_loss = (((aux - target) ** 2) * om).sum() / om.sum().clamp(min=1)
+        elif args.action_bins:
+            text_own = model.encode_text(ids)
+            img, propf = model.image_and_state(rgb, prop, text_own)
+            feats = model.fuse(img, propf, text_own)
+            m, logit, tok_logits = model.heads(feats)
+            aux_loss = 0.0
+            if args.aux_offsets:
+                om = train["offset_mask"][idx]
+                aux = model.aux_head(feats)
+                aux_loss = (((aux - train["offsets"][idx] / 3.0) ** 2) * om).sum() / om.sum().clamp(min=1)
+            if args.paired_goal:
+                text_oth = model.encode_text(prep.text_ids([train["partner_instr"][i] for i in idx]))
+                g_own = model.goal_head(feats)
+                g_oth = model.goal_head(model.fuse(img, propf, text_oth))
+                aux_loss = (((g_own - train["goal_own"][idx]) ** 2).sum(1).mean()
+                            + ((g_oth - train["goal_oth"][idx]) ** 2).sum(1).mean()) / 2
         else:
             m, logit = model(rgb, prop, model.encode_text(ids))
             aux_loss = 0.0
-        loss = huber(m, act) + bce(logit, stp) + aux_loss
+        if args.chunk > 1:
+            logits_h, stops_h = tok_logits                                  # (B,H,D,bins), (B,H)
+            mask = train["chunk_mask"][idx]                                 # (B, H)
+            b, H = mask.shape
+            tgt = model.tokenize_actions((train["chunk_action"][idx] / prep.caps).reshape(b * H, 4))
+            ce = nn.functional.cross_entropy(logits_h.reshape(-1, args.action_bins),
+                                             tgt.reshape(-1), reduction="none").reshape(b, H, -1)
+            motion_loss = (ce.mean(-1) * mask).sum() / mask.sum()
+            stop_l = nn.functional.binary_cross_entropy_with_logits(
+                stops_h, train["chunk_stop"][idx], pos_weight=torch.tensor(pos_weight),
+                reduction="none")
+            loss = motion_loss + (stop_l * mask).sum() / mask.sum() + aux_loss
+        else:
+            if args.action_bins:
+                target = model.tokenize_actions(act)                     # (B, D) bin indices
+                motion_loss = nn.functional.cross_entropy(
+                    tok_logits.reshape(-1, args.action_bins), target.reshape(-1))
+            else:
+                motion_loss = huber(m, act)
+            loss = motion_loss + bce(logit, stp) + aux_loss
         opt.zero_grad()
         loss.backward()
         opt.step()

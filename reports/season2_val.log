@@ -1,0 +1,24 @@
+train runs/bc_cf_v0.2_s0 --counterfactual  18:57:21
+train runs/bc_cf_film_v0.2_s0 --counterfactual --film  18:57:21
+pybullet build time: Oct  4 2026 20:59:54
+pybullet build time: Oct  4 2026 20:59:54
+counterfactual relabelling: {'own_goal_max_abs_error_mps': {'median': 0.0, 'p99': 0.0, 'max': 1.4901161193847656e-08}, 'own_goal_stop_agreement': 1.0, 'counterfactual_rows': 9952, 'counterfactual_stop_positives': 0}
+train rows 19904 (200 episodes), val rows 1028 (20 episodes), loaded in 17.7 s
+model 492,517 parameters; vocab 17 ; Stop positives 666/19904 -> pos_weight 13.9; torch threads 8
+  epoch   0  train 0.4894  val 0.4287  val horizontal RMSE 0.179 m/s
+counterfactual relabelling: {'own_goal_max_abs_error_mps': {'median': 0.0, 'p99': 0.0, 'max': 1.4901161193847656e-08}, 'own_goal_stop_agreement': 1.0, 'counterfactual_rows': 9952, 'counterfactual_stop_positives': 0}
+train rows 19904 (200 episodes), val rows 1028 (20 episodes), loaded in 17.7 s
+model 480,901 parameters; vocab 17 ; Stop positives 666/19904 -> pos_weight 13.9; torch threads 8
+  epoch   0  train 0.4780  val 0.4460  val horizontal RMSE 0.172 m/s
+  epoch   5  train 0.3503  val 0.4759  val horizontal RMSE 0.198 m/s
+  epoch   5  train 0.3464  val 0.4892  val horizontal RMSE 0.229 m/s
+  epoch  10  train 0.3295  val 0.4397  val horizontal RMSE 0.181 m/s
+  epoch  10  train 0.3295  val 0.4025  val horizontal RMSE 0.195 m/s
+  epoch  15  train 0.3175  val 0.3923  val horizontal RMSE 0.193 m/s
+  epoch  15  train 0.3197  val 0.3780  val horizontal RMSE 0.221 m/s
+  epoch  19  train 0.3130  val 0.2870  val horizontal RMSE 0.179 m/s
+best epoch 19 (val loss 0.2870); val horizontal RMSE 0.179 m/s; Stop threshold 0.549 (val F1 0.768, precision 0.62, recall 1.00); trained 4489 s
+wrote runs/bc_cf_v0.2_s0
+  epoch  19  train 0.3180  val 0.2722  val horizontal RMSE 0.204 m/s
+best epoch 19 (val loss 0.2722); val horizontal RMSE 0.204 m/s; Stop threshold 1.294 (val F1 0.859, precision 0.78, recall 0.96); trained 4676 s
+wrote runs/bc_cf_film_v0.2_s0

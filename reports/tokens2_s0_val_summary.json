@@ -1,0 +1,124 @@
+{
+ "bc_v0.2_s0 (RGB+text BC)": {
+  "success": 3,
+  "pairs_success": 0,
+  "pairs_correct": 0,
+  "pairs_inverted": 0,
+  "pairs_collapsed": 10,
+  "chose_nearer": 18,
+  "chose_left": 8,
+  "outcomes": {
+   "wrong_target": 5,
+   "stop_elsewhere": 8,
+   "stop_not_settled": 2,
+   "collision": 2,
+   "success": 3
+  },
+  "parameters": 480901,
+  "train_s": 505.14699071999985
+ },
+ "bc_tok256_v0.2_s0 (RGB+text BC, 256-bin tokens)": {
+  "success": 8,
+  "pairs_success": 1,
+  "pairs_correct": 3,
+  "pairs_inverted": 0,
+  "pairs_collapsed": 7,
+  "chose_nearer": 11,
+  "chose_left": 11,
+  "outcomes": {
+   "success": 8,
+   "stop_not_settled": 4,
+   "stop_elsewhere": 3,
+   "wrong_target": 5
+  },
+  "parameters": 469609,
+  "train_s": 461.38840174300276
+ },
+ "bc_tok64_v0.2_s0 (RGB+text BC, 64-bin tokens)": {
+  "success": 7,
+  "pairs_success": 1,
+  "pairs_correct": 1,
+  "pairs_inverted": 1,
+  "pairs_collapsed": 8,
+  "chose_nearer": 16,
+  "chose_left": 8,
+  "outcomes": {
+   "wrong_target": 10,
+   "success": 7,
+   "stop_not_settled": 2,
+   "stop_elsewhere": 1
+  },
+  "parameters": 471289,
+  "train_s": 1781.4529665730006
+ },
+ "bc_tok1024_v0.2_s0 (RGB+text BC, 1024-bin tokens)": {
+  "success": 4,
+  "pairs_success": 0,
+  "pairs_correct": 2,
+  "pairs_inverted": 0,
+  "pairs_collapsed": 8,
+  "chose_nearer": 14,
+  "chose_left": 14,
+  "outcomes": {
+   "out_of_bounds": 2,
+   "success": 4,
+   "wrong_target": 6,
+   "stop_not_settled": 5,
+   "stop_elsewhere": 2,
+   "collision": 1
+  },
+  "parameters": 475609,
+  "train_s": 1842.9957425039975
+ },
+ "bc_tokchunk8_v0.2_s0 (RGB+text BC, 256-bin tokens, chunk 8, exec 1)": {
+  "success": 8,
+  "pairs_success": 3,
+  "pairs_correct": 4,
+  "pairs_inverted": 1,
+  "pairs_collapsed": 5,
+  "chose_nearer": 9,
+  "chose_left": 7,
+  "outcomes": {
+   "collision": 3,
+   "wrong_target": 6,
+   "stop_not_settled": 3,
+   "success": 8
+  },
+  "parameters": 470633,
+  "train_s": 1928.500381521997
+ },
+ "bc_tokchunk8_v0.2_s0 (RGB+text BC, 256-bin tokens, chunk 8, exec 8)": {
+  "success": 9,
+  "pairs_success": 1,
+  "pairs_correct": 1,
+  "pairs_inverted": 0,
+  "pairs_collapsed": 9,
+  "chose_nearer": 15,
+  "chose_left": 11,
+  "outcomes": {
+   "wrong_target": 9,
+   "success": 9,
+   "stop_not_settled": 2
+  },
+  "parameters": 470633,
+  "train_s": 1928.500381521997
+ },
+ "bc_tokpaired_v0.2_s0 (RGB+text BC, paired goal, 256-bin tokens)": {
+  "success": 7,
+  "pairs_success": 0,
+  "pairs_correct": 2,
+  "pairs_inverted": 0,
+  "pairs_collapsed": 8,
+  "chose_nearer": 14,
+  "chose_left": 10,
+  "outcomes": {
+   "wrong_target": 7,
+   "success": 7,
+   "stop_not_settled": 3,
+   "stop_elsewhere": 2,
+   "out_of_bounds": 1
+  },
+  "parameters": 480555,
+  "train_s": 1988.2185468270036
+ }
+}

@@ -1,0 +1,43 @@
+pybullet build time: Oct  4 2026 20:59:54
+action tokens: 256 bins on dims (0, 1), edges [(0.0, 1.0), (-0.34, 0.362)]
+train rows 9952 (200 episodes), val rows 1028 (20 episodes), loaded in 21.0 s
+model 469,609 parameters; vocab 17 ; Stop positives 666/9952 -> pos_weight 13.9; torch threads 8
+  epoch   0  train 4.1424  val 0.2743  val horizontal RMSE 0.089 m/s
+  epoch   5  train 1.9145  val 0.1634  val horizontal RMSE 0.041 m/s
+  epoch  10  train 1.4995  val 0.1794  val horizontal RMSE 0.042 m/s
+  epoch  15  train 1.2080  val 0.1780  val horizontal RMSE 0.043 m/s
+  epoch  19  train 1.0091  val 0.1705  val horizontal RMSE 0.040 m/s
+best epoch 19 (val loss 0.1705); val horizontal RMSE 0.040 m/s; Stop threshold 1.846 (val F1 0.873, precision 0.81, recall 0.95); trained 461 s
+wrote runs/bc_tok256_v0.2_s0
+pybullet build time: Oct  4 2026 20:59:54
+/home/pchan/dronevla/.venv/lib/python3.12/site-packages/gymnasium/spaces/box.py:231: UserWarning: [33mWARN: Box low's precision lowered by casting to float32, current low.dtype=float64[0m
+  gym.logger.warn(
+/home/pchan/dronevla/.venv/lib/python3.12/site-packages/gymnasium/spaces/box.py:297: UserWarning: [33mWARN: Box high's precision lowered by casting to float32, current high.dtype=float64[0m
+  gym.logger.warn(
+[INFO] BaseAviary.__init__() loaded parameters from the drone's .urdf:
+[INFO] m 0.027000, L 0.039700,
+[INFO] ixx 0.000014, iyy 0.000014, izz 0.000022,
+[INFO] kf 3.160000e-10, km 7.940000e-12,
+[INFO] t2w 2.250000, max_speed_kmh 30.000000,
+[INFO] gnd_eff_coeff 11.368590, prop_radius 0.023135,
+[INFO] drag_xy_coeff 0.000001, drag_z_coeff 0.000001,
+[INFO] dw_coeff_1 2267.180000, dw_coeff_2 0.160000, dw_coeff_3 -0.110000
+bc_v0.2_s0 (RGB+text BC)           SR  3/20 [0.052, 0.36]  pairs 0/10  wrong-target 5  timeout 0  collision 2  OSR 0.30  NE med 1.38 m  latency p50 3.50 ms
+bc_tok256_v0.2_s0 (RGB+text BC, 256-bin tokens) SR  8/20 [0.219, 0.613]  pairs 1/10  wrong-target 5  timeout 0  collision 0  OSR 0.60  NE med 0.22 m  latency p50 3.82 ms
+wrote reports/eval_tokens_s0_val.json and reports/eval_tokens_s0_val.png
+val split of v0.2, 20 episodes
+policy                          success  pairs ok diff targets  instructed  outcomes
+bc_v0.2_s0 (RGB+text BC)         3/20      0/10        0/10       10/20     {'success': 3, 'stop_not_settled': 2, 'wrong_target': 5, 'stop_elsewhere': 8, 'collision': 2}
+bc_tok256_v0.2_s0 (RGB+text BC, 256-bin tokens)   8/20      1/10        3/10       13/20     {'success': 8, 'stop_not_settled': 4, 'wrong_target': 5, 'stop_elsewhere': 3}
+
+bc_v0.2: 1 seeds -- success 3.0 (per seed [3]), pairs ok 0.0, different targets 0.0 (per seed [0]), chose instructed 10.0
+bc_tok256_v0.2: 1 seeds -- success 8.0 (per seed [8]), pairs ok 1.0, different targets 3.0 (per seed [3]), chose instructed 13.0
+policy                                       succ pairOK  correct inverted collapsed  nearer left   params  train_s
+bc_v0.2_s0 (RGB+text BC)                        3      0        0        0        10      18    8   480901  505
+bc_tok256_v0.2_s0 (RGB+text BC, 256-bin toke    8      1        3        0         7      11   11   469609  461
+wrote reports/tokens_s0_val_summary.json
+runs/bc_tok256_v0.2_s0 {'t = 0': 0.0, 't = 1-4': 0.0, 't = 5-9': 0.0, 't >= 10': 0.0} dir 74/200
+expert {'t = 0': 0.1999, 't = 1-4': 0.2094, 't = 5-9': 0.2363, 't >= 10': 0.435}
+share of rows {'t = 0': 0.02009646302250804, 't = 1-4': 0.08038585209003216, 't = 5-9': 0.10048231511254019, 't >= 10': 0.7990353697749196} relabel check {'own_goal_max_abs_error_mps': {'median': 0.0, 'p99': 0.0, 'max': 1.4901161193847656e-08}, 'own_goal_stop_agreement': 1.0, 'counterfactual_rows': 9952, 'counterfactual_stop_positives': 0}
+wrote reports/instruction_sensitivity_tok256_train.json
+done 23:54:52

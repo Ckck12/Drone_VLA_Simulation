@@ -1,0 +1,36 @@
+{
+ "bc_attn_v0.2_s0 (RGB+text BC, attention)": {
+  "success": 0,
+  "pairs_success": 0,
+  "pairs_correct": 0,
+  "pairs_inverted": 0,
+  "pairs_collapsed": 10,
+  "chose_nearer": 18,
+  "chose_left": 8,
+  "outcomes": {
+   "collision": 8,
+   "stop_elsewhere": 10,
+   "out_of_bounds": 2
+  },
+  "parameters": 420997,
+  "train_s": 1948.8745014110027
+ },
+ "bc_attn_tok256_v0.2_s0 (RGB+text BC, attention)": {
+  "success": 9,
+  "pairs_success": 0,
+  "pairs_correct": 1,
+  "pairs_inverted": 0,
+  "pairs_collapsed": 9,
+  "chose_nearer": 11,
+  "chose_left": 11,
+  "outcomes": {
+   "success": 9,
+   "out_of_bounds": 2,
+   "wrong_target": 5,
+   "stop_elsewhere": 2,
+   "stop_not_settled": 2
+  },
+  "parameters": 477289,
+  "train_s": 515.3314568819987
+ }
+}

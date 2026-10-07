@@ -1,0 +1,41 @@
+train 10:41:43
+pybullet build time: Oct  4 2026 20:59:54
+action tokens: 256 bins on dims (0, 1), edges [(0.0, 1.0), (-0.34, 0.362)]
+train rows 9952 (200 episodes), val rows 1028 (20 episodes), loaded in 7.5 s
+model 477,289 parameters; vocab 17 ; Stop positives 666/9952 -> pos_weight 13.9; torch threads 8
+  epoch   0  train 4.6052  val 0.2589  val horizontal RMSE 0.084 m/s
+  epoch   5  train 2.2747  val 0.1710  val horizontal RMSE 0.040 m/s
+  epoch  10  train 1.8679  val 0.1790  val horizontal RMSE 0.033 m/s
+  epoch  15  train 1.6136  val 0.1829  val horizontal RMSE 0.033 m/s
+  epoch  19  train 1.4898  val 0.1832  val horizontal RMSE 0.034 m/s
+best epoch 19 (val loss 0.1832); val horizontal RMSE 0.034 m/s; Stop threshold 0.292 (val F1 0.862, precision 0.77, recall 0.99); trained 515 s
+wrote runs/bc_attn_tok256_v0.2_s0
+pybullet build time: Oct  4 2026 20:59:54
+/home/pchan/dronevla/.venv/lib/python3.12/site-packages/gymnasium/spaces/box.py:231: UserWarning: [33mWARN: Box low's precision lowered by casting to float32, current low.dtype=float64[0m
+  gym.logger.warn(
+/home/pchan/dronevla/.venv/lib/python3.12/site-packages/gymnasium/spaces/box.py:297: UserWarning: [33mWARN: Box high's precision lowered by casting to float32, current high.dtype=float64[0m
+  gym.logger.warn(
+[INFO] BaseAviary.__init__() loaded parameters from the drone's .urdf:
+[INFO] m 0.027000, L 0.039700,
+[INFO] ixx 0.000014, iyy 0.000014, izz 0.000022,
+[INFO] kf 3.160000e-10, km 7.940000e-12,
+[INFO] t2w 2.250000, max_speed_kmh 30.000000,
+[INFO] gnd_eff_coeff 11.368590, prop_radius 0.023135,
+[INFO] drag_xy_coeff 0.000001, drag_z_coeff 0.000001,
+[INFO] dw_coeff_1 2267.180000, dw_coeff_2 0.160000, dw_coeff_3 -0.110000
+bc_attn_v0.2_s0 (RGB+text BC, attention) SR  0/20 [0.0, 0.161]  pairs 0/10  wrong-target 0  timeout 0  collision 8  OSR 0.15  NE med 2.33 m  latency p50 3.74 ms
+bc_attn_tok256_v0.2_s0 (RGB+text BC, attention) SR  9/20 [0.258, 0.658]  pairs 0/10  wrong-target 5  timeout 0  collision 0  OSR 0.55  NE med 0.33 m  latency p50 3.94 ms
+wrote reports/eval_attn_tok_s0_val.json and reports/eval_attn_tok_s0_val.png
+policy                                       succ pairOK  correct inverted collapsed  nearer left   params  train_s
+bc_attn_v0.2_s0 (RGB+text BC, attention)        0      0        0        0        10      18    8   420997  1949
+bc_attn_tok256_v0.2_s0 (RGB+text BC, attenti    9      0        1        0         9      11   11   477289  515
+wrote reports/attn_tok_s0_val_summary.json
+runs/bc_attn_tok256_v0.2_s0 {'t = 0': 0.05, 't = 1-4': 0.0, 't = 5-9': 0.0, 't >= 10': 0.0014} dir 108/200
+expert {'t = 0': 0.1999, 't = 1-4': 0.2094, 't = 5-9': 0.2363, 't >= 10': 0.435}
+share of rows {'t = 0': 0.02009646302250804, 't = 1-4': 0.08038585209003216, 't = 5-9': 0.10048231511254019, 't >= 10': 0.7990353697749196} relabel check {'own_goal_max_abs_error_mps': {'median': 0.0, 'p99': 0.0, 'max': 1.4901161193847656e-08}, 'own_goal_stop_agreement': 1.0, 'counterfactual_rows': 9952, 'counterfactual_stop_positives': 0}
+wrote reports/instruction_sensitivity_attn_tok_train.json
+pybullet build time: Oct  4 2026 20:59:54
+/home/pchan/dronevla/dronevla/evaluate.py:101: UserWarning: The given NumPy array is not writable, and PyTorch does not support non-writable tensors. This means writing to this tensor will result in undefined behavior. You may want to copy the array to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/utils/tensor_numpy.cpp:213.)
+  rgb = torch.from_numpy(np.ascontiguousarray(obs["rgb"])).unsqueeze(0)
+wrote reports/figures/attention/bc_attn_tok256_v0.2_s0.png
+done 10:52:43

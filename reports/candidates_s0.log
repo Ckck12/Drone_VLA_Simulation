@@ -1,0 +1,91 @@
+skip runs/bc_cf_v0.2_s0
+skip runs/bc_cf_film_v0.2_s0
+train runs/bc_attn_v0.2_s0 --attn  20:15:56
+train runs/bc_aux_v0.2_s0 --aux-offsets  20:15:56
+pybullet build time: Oct  4 2026 20:59:54
+pybullet build time: Oct  4 2026 20:59:54
+train rows 9952 (200 episodes), val rows 1028 (20 episodes), loaded in 11.3 s
+model 493,773 parameters; vocab 17 ; Stop positives 666/9952 -> pos_weight 13.9; torch threads 8
+  epoch   0  train 0.4800  val 0.2682  val horizontal RMSE 0.070 m/s
+train rows 9952 (200 episodes), val rows 1028 (20 episodes), loaded in 11.3 s
+model 420,997 parameters; vocab 17 ; Stop positives 666/9952 -> pos_weight 13.9; torch threads 8
+  epoch   0  train 0.4329  val 0.2452  val horizontal RMSE 0.055 m/s
+  epoch   5  train 0.1496  val 0.1561  val horizontal RMSE 0.033 m/s
+  epoch  10  train 0.1128  val 0.2054  val horizontal RMSE 0.034 m/s
+  epoch  15  train 0.0866  val 0.1325  val horizontal RMSE 0.031 m/s
+  epoch  19  train 0.0962  val 0.1391  val horizontal RMSE 0.031 m/s
+best epoch 19 (val loss 0.1391); val horizontal RMSE 0.031 m/s; Stop threshold 1.844 (val F1 0.867, precision 0.80, recall 0.95); trained 1277 s
+wrote runs/bc_aux_v0.2_s0
+  epoch   5  train 0.2216  val 0.2338  val horizontal RMSE 0.073 m/s
+  epoch  10  train 0.1858  val 0.2609  val horizontal RMSE 0.076 m/s
+  epoch  15  train 0.1652  val 0.1970  val horizontal RMSE 0.071 m/s
+  epoch  19  train 0.1710  val 0.2117  val horizontal RMSE 0.071 m/s
+best epoch 19 (val loss 0.2117); val horizontal RMSE 0.071 m/s; Stop threshold 0.664 (val F1 0.787, precision 0.66, recall 0.97); trained 1949 s
+wrote runs/bc_attn_v0.2_s0
+train runs/bc_attn_cf_v0.2_s0 --attn --counterfactual  20:48:46
+pybullet build time: Oct  4 2026 20:59:54
+counterfactual relabelling: {'own_goal_max_abs_error_mps': {'median': 0.0, 'p99': 0.0, 'max': 1.4901161193847656e-08}, 'own_goal_stop_agreement': 1.0, 'counterfactual_rows': 9952, 'counterfactual_stop_positives': 0}
+train rows 19904 (200 episodes), val rows 1028 (20 episodes), loaded in 8.0 s
+model 420,997 parameters; vocab 17 ; Stop positives 666/19904 -> pos_weight 13.9; torch threads 8
+  epoch   0  train 0.4849  val 0.4335  val horizontal RMSE 0.168 m/s
+  epoch   5  train 0.3521  val 0.4379  val horizontal RMSE 0.199 m/s
+  epoch  10  train 0.3295  val 0.4040  val horizontal RMSE 0.176 m/s
+  epoch  15  train 0.3227  val 0.3873  val horizontal RMSE 0.208 m/s
+  epoch  19  train 0.3198  val 0.2761  val horizontal RMSE 0.184 m/s
+best epoch 19 (val loss 0.2761); val horizontal RMSE 0.184 m/s; Stop threshold 1.812 (val F1 0.789, precision 0.79, recall 0.79); trained 1160 s
+wrote runs/bc_attn_cf_v0.2_s0
+evaluate 21:08:25
+pybullet build time: Oct  4 2026 20:59:54
+/home/pchan/dronevla/.venv/lib/python3.12/site-packages/gymnasium/spaces/box.py:231: UserWarning: [33mWARN: Box low's precision lowered by casting to float32, current low.dtype=float64[0m
+  gym.logger.warn(
+/home/pchan/dronevla/.venv/lib/python3.12/site-packages/gymnasium/spaces/box.py:297: UserWarning: [33mWARN: Box high's precision lowered by casting to float32, current high.dtype=float64[0m
+  gym.logger.warn(
+[INFO] BaseAviary.__init__() loaded parameters from the drone's .urdf:
+[INFO] m 0.027000, L 0.039700,
+[INFO] ixx 0.000014, iyy 0.000014, izz 0.000022,
+[INFO] kf 3.160000e-10, km 7.940000e-12,
+[INFO] t2w 2.250000, max_speed_kmh 30.000000,
+[INFO] gnd_eff_coeff 11.368590, prop_radius 0.023135,
+[INFO] drag_xy_coeff 0.000001, drag_z_coeff 0.000001,
+[INFO] dw_coeff_1 2267.180000, dw_coeff_2 0.160000, dw_coeff_3 -0.110000
+expert (oracle)                    SR 20/20 [0.839, 1.0]  pairs 10/10  wrong-target 0  timeout 0  collision 0  OSR 1.00  NE med 0.07 m  latency p50 0.05 ms
+plan_oracle (true goal offset, oracle) SR 20/20 [0.839, 1.0]  pairs 10/10  wrong-target 0  timeout 0  collision 0  OSR 1.00  NE med 0.05 m  latency p50 1.73 ms
+bc_v0.2_s0 (RGB+text BC)           SR  3/20 [0.052, 0.36]  pairs 0/10  wrong-target 5  timeout 0  collision 2  OSR 0.30  NE med 1.38 m  latency p50 2.70 ms
+bc_cf_v0.2_s0 (RGB+text BC)        SR  0/20 [0.0, 0.161]  pairs 0/10  wrong-target 0  timeout 0  collision 5  OSR 0.15  NE med 2.93 m  latency p50 2.77 ms
+bc_cf_film_v0.2_s0 (RGB+text BC, FiLM) SR  0/20 [0.0, 0.161]  pairs 0/10  wrong-target 0  timeout 0  collision 4  OSR 0.30  NE med 3.30 m  latency p50 3.25 ms
+bc_aux_v0.2_s0 (RGB+text BC)       SR  8/20 [0.219, 0.613]  pairs 0/10  wrong-target 8  timeout 0  collision 0  OSR 0.50  NE med 0.72 m  latency p50 2.72 ms
+bc_attn_v0.2_s0 (RGB+text BC, attention) SR  0/20 [0.0, 0.161]  pairs 0/10  wrong-target 0  timeout 0  collision 8  OSR 0.15  NE med 2.33 m  latency p50 3.58 ms
+bc_attn_cf_v0.2_s0 (RGB+text BC, attention) SR  0/20 [0.0, 0.161]  pairs 0/10  wrong-target 1  timeout 0  collision 6  OSR 0.30  NE med 2.67 m  latency p50 3.68 ms
+plan_integrator_wm_v1_s0 (WM planner) SR 15/20 [0.531, 0.888]  pairs 6/10  wrong-target 0  timeout 0  collision 3  OSR 1.00  NE med 0.21 m  latency p50 4.74 ms
+plan_wm_wm_v1_s0 (WM planner)      SR  0/20 [0.0, 0.161]  pairs 0/10  wrong-target 0  timeout 13  collision 5  OSR 0.40  NE med 1.63 m  latency p50 21.38 ms
+wrote reports/eval_candidates_s0_val.json and reports/eval_candidates_s0_val.png
+val split of v0.2, 20 episodes
+policy                          success  pairs ok diff targets  instructed  outcomes
+expert (oracle)                 20/20     10/10       10/10       20/20     {'success': 20}
+plan_oracle (true goal offset, oracle)  20/20     10/10       10/10       20/20     {'success': 20}
+bc_v0.2_s0 (RGB+text BC)         3/20      0/10        0/10       10/20     {'success': 3, 'stop_not_settled': 2, 'wrong_target': 5, 'stop_elsewhere': 8, 'collision': 2}
+bc_cf_v0.2_s0 (RGB+text BC)      0/20      0/10        5/10        9/20     {'collision': 5, 'out_of_bounds': 15}
+bc_cf_film_v0.2_s0 (RGB+text BC, FiLM)   0/20      0/10        7/10       11/20     {'collision': 4, 'out_of_bounds': 16}
+bc_aux_v0.2_s0 (RGB+text BC)     8/20      0/10        0/10       10/20     {'success': 8, 'stop_not_settled': 2, 'wrong_target': 8, 'stop_elsewhere': 2}
+bc_attn_v0.2_s0 (RGB+text BC, attention)   0/20      0/10        0/10       10/20     {'stop_elsewhere': 10, 'collision': 8, 'out_of_bounds': 2}
+bc_attn_cf_v0.2_s0 (RGB+text BC, attention)   0/20      0/10        8/10       12/20     {'wrong_target': 1, 'collision': 6, 'out_of_bounds': 13}
+plan_integrator_wm_v1_s0 (WM planner)  15/20      6/10       10/10       20/20     {'success': 15, 'stop_elsewhere': 2, 'collision': 3}
+plan_wm_wm_v1_s0 (WM planner)    0/20      0/10        3/10       13/20     {'stop_elsewhere': 1, 'collision': 5, 'out_of_bounds': 1, 'timeout': 13}
+
+bc_v0.2: 1 seeds -- success 3.0 (per seed [3]), pairs ok 0.0, different targets 0.0 (per seed [0]), chose instructed 10.0
+bc_cf_v0.2: 1 seeds -- success 0.0 (per seed [0]), pairs ok 0.0, different targets 5.0 (per seed [5]), chose instructed 9.0
+bc_cf_film_v0.2: 1 seeds -- success 0.0 (per seed [0]), pairs ok 0.0, different targets 7.0 (per seed [7]), chose instructed 11.0
+bc_aux_v0.2: 1 seeds -- success 8.0 (per seed [8]), pairs ok 0.0, different targets 0.0 (per seed [0]), chose instructed 10.0
+bc_attn_v0.2: 1 seeds -- success 0.0 (per seed [0]), pairs ok 0.0, different targets 0.0 (per seed [0]), chose instructed 10.0
+bc_attn_cf_v0.2: 1 seeds -- success 0.0 (per seed [0]), pairs ok 0.0, different targets 8.0 (per seed [8]), chose instructed 12.0
+plan_integrator_wm_v1: 1 seeds -- success 15.0 (per seed [15]), pairs ok 6.0, different targets 10.0 (per seed [10]), chose instructed 20.0
+plan_wm_wm_v1: 1 seeds -- success 0.0 (per seed [0]), pairs ok 0.0, different targets 3.0 (per seed [3]), chose instructed 13.0
+pybullet build time: Oct  4 2026 20:59:54
+/home/pchan/dronevla/dronevla/evaluate.py:88: UserWarning: The given NumPy array is not writable, and PyTorch does not support non-writable tensors. This means writing to this tensor will result in undefined behavior. You may want to copy the array to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/utils/tensor_numpy.cpp:213.)
+  rgb = torch.from_numpy(np.ascontiguousarray(obs["rgb"])).unsqueeze(0)
+wrote reports/figures/attention/bc_attn_v0.2_s0.png
+pybullet build time: Oct  4 2026 20:59:54
+/home/pchan/dronevla/dronevla/evaluate.py:88: UserWarning: The given NumPy array is not writable, and PyTorch does not support non-writable tensors. This means writing to this tensor will result in undefined behavior. You may want to copy the array to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/utils/tensor_numpy.cpp:213.)
+  rgb = torch.from_numpy(np.ascontiguousarray(obs["rgb"])).unsqueeze(0)
+wrote reports/figures/attention/bc_attn_cf_v0.2_s0.png
+done 21:19:48

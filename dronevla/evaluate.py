@@ -53,8 +53,11 @@ class OraclePolicy:
 class LearnedPolicy:
     oracle = False
 
-    def __init__(self, run_dir: pathlib.Path):
+    def __init__(self, run_dir: pathlib.Path, exec_steps: int = 1):
         run_dir = pathlib.Path(run_dir)
+        # chunk models: execute this many predicted steps before asking the model again
+        self.exec_steps = exec_steps
+        self._queue = []
         self.config = json.loads((run_dir / "config.json").read_text())
         prep = self.config["prep"]
         self.no_language = prep["no_language"]
@@ -68,6 +71,15 @@ class LearnedPolicy:
             torch.load(run_dir / "model.pt", weights_only=True)))
         if kwargs.get("film"):
             self.name = self.name.replace(" BC)", " BC, FiLM)")
+        if kwargs.get("attn"):
+            self.name = self.name.replace(" BC)", " BC, attention)")
+        if kwargs.get("action_bins"):
+            self.name = self.name.replace(" BC)", f" BC, {kwargs['action_bins']}-bin tokens)")
+        if kwargs.get("chunk", 1) > 1:
+            self.name = self.name.replace(" tokens)", f" tokens, chunk {kwargs['chunk']}, exec {exec_steps})")
+        if kwargs.get("paired_goal"):
+            self.name = self.name.replace(" BC", " BC, paired goal", 1)
+        assert exec_steps <= kwargs.get("chunk", 1), "cannot execute more steps than the chunk holds"
         self.model.eval()
         self.mean = torch.tensor(prep["proprio_mean"])
         self.std = torch.tensor(prep["proprio_std"])
@@ -81,10 +93,23 @@ class LearnedPolicy:
         self.unknown_token_rate = 0.0 if self.no_language else self.vocab.unknown_rate(instruction)
         with torch.no_grad():
             self.text_vec = self.model.encode_text(pad_batch(ids))
+        self._queue = []
 
     def act(self, obs) -> np.ndarray:
+        if self._queue:
+            return self._queue.pop(0)
         rgb = torch.from_numpy(np.ascontiguousarray(obs["rgb"])).unsqueeze(0)
         prop = (torch.from_numpy(obs["proprio"]).unsqueeze(0) - self.mean) / self.std
+        if self.exec_steps > 1:
+            with torch.no_grad():
+                feats = self.model.fuse(*self.model.image_and_state(rgb, prop, self.text_vec),
+                                        self.text_vec)
+                _, _, (logits, stops) = self.model.heads(feats)
+                motions = self.model.decode_chunk(logits)[0] * self.caps     # (H, 4)
+            acts = [np.array([*motions[k].numpy(), float(stops[0, k]) - self.threshold],
+                             dtype=np.float32) for k in range(self.exec_steps)]
+            self._queue = acts[1:]
+            return acts[0]
         with torch.no_grad():
             motion, logit = self.model(rgb, prop, self.text_vec)
         m = (motion[0] * self.caps).numpy()
@@ -100,6 +125,9 @@ def load_policy(spec, cfg):
     if spec.startswith("plan"):
         from dronevla.planner import policy_from_spec
         return policy_from_spec(spec)
+    if "#exec=" in spec:                       # e.g. runs/x#exec=8: execute 8 chunk steps per query
+        path, n = spec.split("#exec=")
+        return LearnedPolicy(pathlib.Path(path), exec_steps=int(n))
     return LearnedPolicy(pathlib.Path(spec))
 
 

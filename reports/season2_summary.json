@@ -1,0 +1,384 @@
+[
+ {
+  "label": "scripted expert (oracle)",
+  "group": "reference",
+  "policy": "expert (oracle)",
+  "parameters": null,
+  "success": 20,
+  "pair_success": 10,
+  "pairs_correct": 10,
+  "pairs_inverted": 0,
+  "pairs_same_target": 0,
+  "reached_goal": 20,
+  "final_dist_median_m": 0.0731305754098448,
+  "outcomes": {
+   "success": 20
+  }
+ },
+ {
+  "label": "planner + true target position (oracle)",
+  "group": "reference",
+  "policy": "plan_oracle (true goal offset, oracle)",
+  "parameters": null,
+  "success": 20,
+  "pair_success": 10,
+  "pairs_correct": 10,
+  "pairs_inverted": 0,
+  "pairs_same_target": 0,
+  "reached_goal": 20,
+  "final_dist_median_m": 0.05323455813215079,
+  "outcomes": {
+   "success": 20
+  }
+ },
+ {
+  "label": "BC baseline (regression)",
+  "group": "regression BC",
+  "policy": "bc_v0.2_s0 (RGB+text BC)",
+  "parameters": 480901,
+  "success": 3,
+  "pair_success": 0,
+  "pairs_correct": 0,
+  "pairs_inverted": 0,
+  "pairs_same_target": 10,
+  "reached_goal": 6,
+  "final_dist_median_m": 1.3842880912810882,
+  "outcomes": {
+   "wrong_target": 5,
+   "stop_elsewhere": 8,
+   "stop_not_settled": 2,
+   "collision": 2,
+   "success": 3
+  },
+  "first_frame_changed_rows": 0,
+  "first_frame_mean_gap_mps": 0.004412964775692672,
+  "first_frame_direction_correct": "126/200"
+ },
+ {
+  "label": "+ counterfactual relabelling",
+  "group": "regression BC",
+  "policy": "bc_cf_v0.2_s0 (RGB+text BC)",
+  "parameters": 480901,
+  "success": 0,
+  "pair_success": 0,
+  "pairs_correct": 2,
+  "pairs_inverted": 3,
+  "pairs_same_target": 5,
+  "reached_goal": 3,
+  "final_dist_median_m": 2.927319016655317,
+  "outcomes": {
+   "collision": 5,
+   "out_of_bounds": 15
+  }
+ },
+ {
+  "label": "+ counterfactual + FiLM",
+  "group": "regression BC",
+  "policy": "bc_cf_film_v0.2_s0 (RGB+text BC, FiLM)",
+  "parameters": 492517,
+  "success": 0,
+  "pair_success": 0,
+  "pairs_correct": 4,
+  "pairs_inverted": 3,
+  "pairs_same_target": 3,
+  "reached_goal": 6,
+  "final_dist_median_m": 3.297285608348667,
+  "outcomes": {
+   "out_of_bounds": 16,
+   "collision": 4
+  }
+ },
+ {
+  "label": "+ target-position aux head",
+  "group": "regression BC",
+  "policy": "bc_aux_v0.2_s0 (RGB+text BC)",
+  "parameters": 493773,
+  "success": 8,
+  "pair_success": 0,
+  "pairs_correct": 0,
+  "pairs_inverted": 0,
+  "pairs_same_target": 10,
+  "reached_goal": 10,
+  "final_dist_median_m": 0.7190614542598179,
+  "outcomes": {
+   "wrong_target": 8,
+   "success": 8,
+   "stop_elsewhere": 2,
+   "stop_not_settled": 2
+  }
+ },
+ {
+  "label": "+ cross-attention",
+  "group": "regression BC",
+  "policy": "bc_attn_v0.2_s0 (RGB+text BC, attention)",
+  "parameters": 420997,
+  "success": 0,
+  "pair_success": 0,
+  "pairs_correct": 0,
+  "pairs_inverted": 0,
+  "pairs_same_target": 10,
+  "reached_goal": 3,
+  "final_dist_median_m": 2.3299737907087543,
+  "outcomes": {
+   "collision": 8,
+   "stop_elsewhere": 10,
+   "out_of_bounds": 2
+  }
+ },
+ {
+  "label": "+ cross-attention + counterfactual",
+  "group": "regression BC",
+  "policy": "bc_attn_cf_v0.2_s0 (RGB+text BC, attention)",
+  "parameters": 420997,
+  "success": 0,
+  "pair_success": 0,
+  "pairs_correct": 5,
+  "pairs_inverted": 3,
+  "pairs_same_target": 2,
+  "reached_goal": 6,
+  "final_dist_median_m": 2.671540843861009,
+  "outcomes": {
+   "collision": 6,
+   "out_of_bounds": 13,
+   "wrong_target": 1
+  }
+ },
+ {
+  "label": "256-bin action tokens",
+  "group": "token BC",
+  "policy": "bc_tok256_v0.2_s0 (RGB+text BC, 256-bin tokens)",
+  "parameters": 469609,
+  "success": 8,
+  "pair_success": 1,
+  "pairs_correct": 3,
+  "pairs_inverted": 0,
+  "pairs_same_target": 7,
+  "reached_goal": 12,
+  "final_dist_median_m": 0.21607523055179062,
+  "outcomes": {
+   "success": 8,
+   "stop_not_settled": 4,
+   "stop_elsewhere": 3,
+   "wrong_target": 5
+  },
+  "first_frame_changed_rows": 74,
+  "first_frame_mean_gap_mps": 0.07186075940728187,
+  "first_frame_direction_correct": "74/200"
+ },
+ {
+  "label": "64-bin action tokens",
+  "group": "token BC",
+  "policy": "bc_tok64_v0.2_s0 (RGB+text BC, 64-bin tokens)",
+  "parameters": 471289,
+  "success": 7,
+  "pair_success": 1,
+  "pairs_correct": 1,
+  "pairs_inverted": 1,
+  "pairs_same_target": 8,
+  "reached_goal": 10,
+  "final_dist_median_m": 0.9875978828797946,
+  "outcomes": {
+   "wrong_target": 10,
+   "success": 7,
+   "stop_not_settled": 2,
+   "stop_elsewhere": 1
+  },
+  "first_frame_changed_rows": 62,
+  "first_frame_mean_gap_mps": 0.0629689322412014,
+  "first_frame_direction_correct": "60/200"
+ },
+ {
+  "label": "1024-bin action tokens",
+  "group": "token BC",
+  "policy": "bc_tok1024_v0.2_s0 (RGB+text BC, 1024-bin tokens)",
+  "parameters": 475609,
+  "success": 4,
+  "pair_success": 0,
+  "pairs_correct": 2,
+  "pairs_inverted": 0,
+  "pairs_same_target": 8,
+  "reached_goal": 12,
+  "final_dist_median_m": 0.8485834724587431,
+  "outcomes": {
+   "out_of_bounds": 2,
+   "success": 4,
+   "wrong_target": 6,
+   "stop_not_settled": 5,
+   "stop_elsewhere": 2,
+   "collision": 1
+  },
+  "first_frame_changed_rows": 66,
+  "first_frame_mean_gap_mps": 0.06725728683173657,
+  "first_frame_direction_correct": "72/200"
+ },
+ {
+  "label": "256-bin + paired goal loss",
+  "group": "token BC",
+  "policy": "bc_tokpaired_v0.2_s0 (RGB+text BC, paired goal, 256-bin tokens)",
+  "parameters": 480555,
+  "success": 7,
+  "pair_success": 0,
+  "pairs_correct": 2,
+  "pairs_inverted": 0,
+  "pairs_same_target": 8,
+  "reached_goal": 11,
+  "final_dist_median_m": 0.4225800059242232,
+  "outcomes": {
+   "wrong_target": 7,
+   "success": 7,
+   "stop_not_settled": 3,
+   "stop_elsewhere": 2,
+   "out_of_bounds": 1
+  },
+  "first_frame_changed_rows": 82,
+  "first_frame_mean_gap_mps": 0.0807114838808775,
+  "first_frame_direction_correct": "86/200"
+ },
+ {
+  "label": "256-bin + cross-attention",
+  "group": "token BC",
+  "policy": "bc_attn_tok256_v0.2_s0 (RGB+text BC, attention)",
+  "parameters": 477289,
+  "success": 9,
+  "pair_success": 0,
+  "pairs_correct": 1,
+  "pairs_inverted": 0,
+  "pairs_same_target": 9,
+  "reached_goal": 11,
+  "final_dist_median_m": 0.3253441377775568,
+  "outcomes": {
+   "success": 9,
+   "out_of_bounds": 2,
+   "wrong_target": 5,
+   "stop_elsewhere": 2,
+   "stop_not_settled": 2
+  },
+  "first_frame_changed_rows": 102,
+  "first_frame_mean_gap_mps": 0.10327672190964222,
+  "first_frame_direction_correct": "108/200"
+ },
+ {
+  "label": "256-bin + chunk 8 (execute 1)",
+  "group": "token BC",
+  "policy": "bc_tokchunk8_v0.2_s0 (RGB+text BC, 256-bin tokens, chunk 8, exec 1)",
+  "parameters": 470633,
+  "success": 8,
+  "pair_success": 3,
+  "pairs_correct": 4,
+  "pairs_inverted": 1,
+  "pairs_same_target": 5,
+  "reached_goal": 13,
+  "final_dist_median_m": 0.29060420999327125,
+  "outcomes": {
+   "collision": 3,
+   "wrong_target": 6,
+   "stop_not_settled": 3,
+   "success": 8
+  },
+  "first_frame_changed_rows": 114,
+  "first_frame_mean_gap_mps": 0.11294949389994144,
+  "first_frame_direction_correct": "128/200"
+ },
+ {
+  "label": "256-bin + chunk 8 (execute 8)",
+  "group": "token BC",
+  "policy": "bc_tokchunk8_v0.2_s0 (RGB+text BC, 256-bin tokens, chunk 8, exec 8)",
+  "parameters": 470633,
+  "success": 9,
+  "pair_success": 1,
+  "pairs_correct": 1,
+  "pairs_inverted": 0,
+  "pairs_same_target": 9,
+  "reached_goal": 11,
+  "final_dist_median_m": 0.2939039994507792,
+  "outcomes": {
+   "wrong_target": 9,
+   "success": 9,
+   "stop_not_settled": 2
+  }
+ },
+ {
+  "label": "chunk 8 + exploration states",
+  "group": "token BC",
+  "policy": "bc_tokchunk8_explore_v0.2_s0 (RGB+text BC, 256-bin tokens, chunk 8, exec 1)",
+  "parameters": 470633,
+  "success": 6,
+  "pair_success": 0,
+  "pairs_correct": 5,
+  "pairs_inverted": 2,
+  "pairs_same_target": 3,
+  "reached_goal": 13,
+  "final_dist_median_m": 2.1054696016028616,
+  "outcomes": {
+   "collision": 4,
+   "timeout": 2,
+   "success": 6,
+   "out_of_bounds": 8
+  },
+  "first_frame_changed_rows": 174,
+  "first_frame_mean_gap_mps": 0.17952878803014755,
+  "first_frame_direction_correct": "180/200"
+ },
+ {
+  "label": "chunk 8 + exploration + aux head",
+  "group": "token BC",
+  "policy": "bc_tokchunk8_explore_aux_v0.2_s0 (RGB+text BC, 256-bin tokens, chunk 8, exec 1)",
+  "parameters": 468909,
+  "success": 2,
+  "pair_success": 0,
+  "pairs_correct": 5,
+  "pairs_inverted": 2,
+  "pairs_same_target": 3,
+  "reached_goal": 10,
+  "final_dist_median_m": 1.5973825577453353,
+  "outcomes": {
+   "wrong_target": 5,
+   "collision": 5,
+   "success": 2,
+   "stop_elsewhere": 2,
+   "timeout": 3,
+   "stop_not_settled": 1,
+   "out_of_bounds": 2
+  },
+  "first_frame_changed_rows": 160,
+  "first_frame_mean_gap_mps": 0.1589485790580511,
+  "first_frame_direction_correct": "168/200"
+ },
+ {
+  "label": "world model + planner (integrator)",
+  "group": "modular",
+  "policy": "plan_integrator_wm_v1_s0 (WM planner)",
+  "parameters": null,
+  "success": 15,
+  "pair_success": 6,
+  "pairs_correct": 10,
+  "pairs_inverted": 0,
+  "pairs_same_target": 0,
+  "reached_goal": 20,
+  "final_dist_median_m": 0.21220897057573576,
+  "outcomes": {
+   "success": 15,
+   "stop_elsewhere": 2,
+   "collision": 3
+  }
+ },
+ {
+  "label": "world model + planner (learned dynamics)",
+  "group": "modular",
+  "policy": "plan_wm_wm_v1_s0 (WM planner)",
+  "parameters": null,
+  "success": 0,
+  "pair_success": 0,
+  "pairs_correct": 3,
+  "pairs_inverted": 0,
+  "pairs_same_target": 7,
+  "reached_goal": 8,
+  "final_dist_median_m": 1.6305133222129387,
+  "outcomes": {
+   "timeout": 13,
+   "collision": 5,
+   "stop_elsewhere": 1,
+   "out_of_bounds": 1
+  }
+ }
+]

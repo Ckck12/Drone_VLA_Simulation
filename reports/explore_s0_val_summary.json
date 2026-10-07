@@ -1,0 +1,56 @@
+{
+ "bc_tokchunk8_v0.2_s0 (RGB+text BC, 256-bin tokens, chunk 8, exec 1)": {
+  "success": 8,
+  "pairs_success": 3,
+  "pairs_correct": 4,
+  "pairs_inverted": 1,
+  "pairs_collapsed": 5,
+  "chose_nearer": 9,
+  "chose_left": 7,
+  "outcomes": {
+   "collision": 3,
+   "wrong_target": 6,
+   "stop_not_settled": 3,
+   "success": 8
+  },
+  "parameters": 470633,
+  "train_s": 1928.500381521997
+ },
+ "bc_tokchunk8_explore_v0.2_s0 (RGB+text BC, 256-bin tokens, chunk 8, exec 1)": {
+  "success": 6,
+  "pairs_success": 0,
+  "pairs_correct": 5,
+  "pairs_inverted": 2,
+  "pairs_collapsed": 3,
+  "chose_nearer": 9,
+  "chose_left": 9,
+  "outcomes": {
+   "collision": 4,
+   "timeout": 2,
+   "success": 6,
+   "out_of_bounds": 8
+  },
+  "parameters": 470633,
+  "train_s": 1236.0919691739982
+ },
+ "bc_tokchunk8_explore_aux_v0.2_s0 (RGB+text BC, 256-bin tokens, chunk 8, exec 1)": {
+  "success": 2,
+  "pairs_success": 0,
+  "pairs_correct": 5,
+  "pairs_inverted": 2,
+  "pairs_collapsed": 3,
+  "chose_nearer": 13,
+  "chose_left": 9,
+  "outcomes": {
+   "wrong_target": 5,
+   "collision": 5,
+   "success": 2,
+   "stop_elsewhere": 2,
+   "timeout": 3,
+   "stop_not_settled": 1,
+   "out_of_bounds": 2
+  },
+  "parameters": 468909,
+  "train_s": 1293.4303260369998
+ }
+}

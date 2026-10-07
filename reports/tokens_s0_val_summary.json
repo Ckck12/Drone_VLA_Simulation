@@ -1,0 +1,37 @@
+{
+ "bc_v0.2_s0 (RGB+text BC)": {
+  "success": 3,
+  "pairs_success": 0,
+  "pairs_correct": 0,
+  "pairs_inverted": 0,
+  "pairs_collapsed": 10,
+  "chose_nearer": 18,
+  "chose_left": 8,
+  "outcomes": {
+   "wrong_target": 5,
+   "stop_elsewhere": 8,
+   "stop_not_settled": 2,
+   "collision": 2,
+   "success": 3
+  },
+  "parameters": 480901,
+  "train_s": 505.14699071999985
+ },
+ "bc_tok256_v0.2_s0 (RGB+text BC, 256-bin tokens)": {
+  "success": 8,
+  "pairs_success": 1,
+  "pairs_correct": 3,
+  "pairs_inverted": 0,
+  "pairs_collapsed": 7,
+  "chose_nearer": 11,
+  "chose_left": 11,
+  "outcomes": {
+   "success": 8,
+   "stop_not_settled": 4,
+   "stop_elsewhere": 3,
+   "wrong_target": 5
+  },
+  "parameters": 469609,
+  "train_s": 461.38840174300276
+ }
+}

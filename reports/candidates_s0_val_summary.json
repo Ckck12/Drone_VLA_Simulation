@@ -1,0 +1,160 @@
+{
+ "expert (oracle)": {
+  "success": 20,
+  "pairs_success": 10,
+  "pairs_correct": 10,
+  "pairs_inverted": 0,
+  "pairs_collapsed": 0,
+  "chose_nearer": 10,
+  "chose_left": 10,
+  "outcomes": {
+   "success": 20
+  },
+  "parameters": null,
+  "train_s": null
+ },
+ "plan_oracle (true goal offset, oracle)": {
+  "success": 20,
+  "pairs_success": 10,
+  "pairs_correct": 10,
+  "pairs_inverted": 0,
+  "pairs_collapsed": 0,
+  "chose_nearer": 10,
+  "chose_left": 10,
+  "outcomes": {
+   "success": 20
+  },
+  "parameters": null,
+  "train_s": null
+ },
+ "bc_v0.2_s0 (RGB+text BC)": {
+  "success": 3,
+  "pairs_success": 0,
+  "pairs_correct": 0,
+  "pairs_inverted": 0,
+  "pairs_collapsed": 10,
+  "chose_nearer": 18,
+  "chose_left": 8,
+  "outcomes": {
+   "wrong_target": 5,
+   "stop_elsewhere": 8,
+   "stop_not_settled": 2,
+   "collision": 2,
+   "success": 3
+  },
+  "parameters": 480901,
+  "train_s": 505.14699071999985
+ },
+ "bc_cf_v0.2_s0 (RGB+text BC)": {
+  "success": 0,
+  "pairs_success": 0,
+  "pairs_correct": 2,
+  "pairs_inverted": 3,
+  "pairs_collapsed": 5,
+  "chose_nearer": 13,
+  "chose_left": 13,
+  "outcomes": {
+   "collision": 5,
+   "out_of_bounds": 15
+  },
+  "parameters": 480901,
+  "train_s": 4489.251572320998
+ },
+ "bc_cf_film_v0.2_s0 (RGB+text BC, FiLM)": {
+  "success": 0,
+  "pairs_success": 0,
+  "pairs_correct": 4,
+  "pairs_inverted": 3,
+  "pairs_collapsed": 3,
+  "chose_nearer": 13,
+  "chose_left": 11,
+  "outcomes": {
+   "out_of_bounds": 16,
+   "collision": 4
+  },
+  "parameters": 492517,
+  "train_s": 4676.140579924999
+ },
+ "bc_aux_v0.2_s0 (RGB+text BC)": {
+  "success": 8,
+  "pairs_success": 0,
+  "pairs_correct": 0,
+  "pairs_inverted": 0,
+  "pairs_collapsed": 10,
+  "chose_nearer": 12,
+  "chose_left": 2,
+  "outcomes": {
+   "wrong_target": 8,
+   "success": 8,
+   "stop_elsewhere": 2,
+   "stop_not_settled": 2
+  },
+  "parameters": 493773,
+  "train_s": 1276.5074654300006
+ },
+ "bc_attn_v0.2_s0 (RGB+text BC, attention)": {
+  "success": 0,
+  "pairs_success": 0,
+  "pairs_correct": 0,
+  "pairs_inverted": 0,
+  "pairs_collapsed": 10,
+  "chose_nearer": 18,
+  "chose_left": 8,
+  "outcomes": {
+   "collision": 8,
+   "stop_elsewhere": 10,
+   "out_of_bounds": 2
+  },
+  "parameters": 420997,
+  "train_s": 1948.8745014110027
+ },
+ "bc_attn_cf_v0.2_s0 (RGB+text BC, attention)": {
+  "success": 0,
+  "pairs_success": 0,
+  "pairs_correct": 5,
+  "pairs_inverted": 3,
+  "pairs_collapsed": 2,
+  "chose_nearer": 10,
+  "chose_left": 8,
+  "outcomes": {
+   "collision": 6,
+   "out_of_bounds": 13,
+   "wrong_target": 1
+  },
+  "parameters": 420997,
+  "train_s": 1159.9030837009996
+ },
+ "plan_integrator_wm_v1_s0 (WM planner)": {
+  "success": 15,
+  "pairs_success": 6,
+  "pairs_correct": 10,
+  "pairs_inverted": 0,
+  "pairs_collapsed": 0,
+  "chose_nearer": 10,
+  "chose_left": 10,
+  "outcomes": {
+   "success": 15,
+   "stop_elsewhere": 2,
+   "collision": 3
+  },
+  "parameters": null,
+  "train_s": null
+ },
+ "plan_wm_wm_v1_s0 (WM planner)": {
+  "success": 0,
+  "pairs_success": 0,
+  "pairs_correct": 3,
+  "pairs_inverted": 0,
+  "pairs_collapsed": 7,
+  "chose_nearer": 15,
+  "chose_left": 9,
+  "outcomes": {
+   "timeout": 13,
+   "collision": 5,
+   "stop_elsewhere": 1,
+   "out_of_bounds": 1
+  },
+  "parameters": null,
+  "train_s": null
+ }
+}
