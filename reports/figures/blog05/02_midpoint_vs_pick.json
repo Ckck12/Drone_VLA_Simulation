@@ -1,0 +1,15 @@
+{
+ "frames": 200,
+ "regression_own_vs_partner": [
+  100,
+  100
+ ],
+ "tokens_own_vs_partner": [
+  135,
+  65
+ ],
+ "regression_mean_err": 0.10065510123968124,
+ "regression_mean_dist_to_midpoint": 0.03420078381896019,
+ "tokens_mean_err": 0.0659925639629364,
+ "tokens_median_err": 0.0005094558000564575
+}

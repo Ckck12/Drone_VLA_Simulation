@@ -58,7 +58,12 @@ script asserts that the repeats give identical outcomes.
    - Attention goes from 0 → 9 successes with the same change.
    - Mechanism (measured on the baseline): at the first frame the regression head predicts the
      **midpoint** of the two sentences' labels; its training error is 0.10 m/s, half the expert's
-     0.20 m/s gap. The token head picks one of them; its t=0 training error is 0.0005 m/s.
+     0.20 m/s gap. Over the 200 training first frames it is closer to its own sentence's answer
+     in exactly 100 and to the partner's in 100, sitting on average 0.03 m/s from the midpoint.
+   - The token head picks one of them: median t=0 training error 0.0005 m/s (mean 0.066). It
+     lands closer to the right answer in 135/200 frames and to the partner's in 65/200, so it
+     commits, though not always to the right answer.
+     Source: `reports/figures/blog05/02_midpoint_vs_pick.json`.
    - So the regression policy hovers between pillars ("stop elsewhere" 8/20); the token policy
      commits.
 2. **Tokens alone don't make it choose by the sentence.** 7–9 of 10 pairs still go to one target.
